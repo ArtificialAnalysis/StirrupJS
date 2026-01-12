@@ -1,0 +1,82 @@
+site_name: StirrupJS Documentation
+site_url: https://stirrupjs.artificialanalysis.ai
+site_description: Lightweight TypeScript/JavaScript framework for building AI agents
+site_author: Artificial Analysis, Inc.
+repo_url: https://github.com/ArtificialAnalysis/stirrup-js
+repo_name: stirrup-js
+
+theme:
+  name: material
+  favicon: assets/stirrup-banner.svg
+  logo: assets/stirrup-banner.svg
+  features:
+    - content.code.copy
+    - content.code.annotate
+    - navigation.sections
+    - navigation.expand
+    - toc.integrate
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: blue
+      accent: blue
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets:
+      base_path: ["."]
+  - admonition
+  - pymdownx.details
+  - attr_list
+  - md_in_html
+  - tables
+
+nav:
+  - Home: index.md
+  - Getting Started: getting-started.md
+  - Core Concepts: concepts.md
+  - Examples: examples.md
+  - Guides:
+      - Creating Tools: guides/tools.md
+      - Tool Providers: guides/tool-providers.md
+      - Code Execution: guides/code-execution.md
+      - Skills: guides/skills.md
+      - Sub-Agents: guides/sub-agents.md
+  - Extending:
+      - Custom Clients: extending/clients.md
+      - Custom Tools: extending/tools.md
+      - Custom Loggers: extending/loggers.md
+      - Custom Code Backends: extending/code-backends.md
+      - Full Customization: extending/full-customization.md
+  - API Reference:
+      - Core:
+          - Agent: api/core/agent.md
+          - Models: api/core/models.md
+      - Clients:
+          - ChatCompletionsClient: api/clients/chat-completions.md
+      - Tools:
+          - Overview: api/tools/index.md
+          - Web Tools: api/tools/web.md
+          - Code Execution: api/tools/code-backends.md
+      - Utils:
+          - Logging: api/utils/logging.md
+          - Structured Logger: api/utils/structured-logger.md
+
+extra_css:
+  - assets/extra.css

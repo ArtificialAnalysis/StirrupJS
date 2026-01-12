@@ -1,0 +1,391 @@
+/**
+ * Structured logger with clean console output
+ * Provides beautiful, readable logging for agent runs
+ */
+const MAX_MESSAGE_LENGTH = 10_000;
+import pino from 'pino';
+import type { Agent, AgentEvents } from '../../core/agent.js';
+
+export interface StructuredLoggerOptions {
+  /** Logging level (default: 'info') */
+  level?: 'trace' | 'debug' | 'info' | 'warn' | 'error';
+
+  /** Enable pretty printing for development (default: true) */
+  pretty?: boolean;
+
+  /** Use clean console format instead of JSON (default: true) */
+  useConsoleFormat?: boolean;
+
+  /** Custom pino options (only used when useConsoleFormat is false) */
+  pinoOptions?: pino.LoggerOptions;
+}
+
+/**
+ * Create a console logger with clean, readable output
+ * @internal
+ */
+function createConsoleLogger<FP = unknown>(
+  agent: Agent<any, any>,
+  level: string
+): () => void {
+  const runData: {
+    startTime?: number;
+    agentName?: string;
+    depth?: number;
+  } = {};
+
+  // Start handler
+  const onRunStart: AgentEvents<FP>['run:start'] = (data) => {
+    runData.startTime = Date.now();
+    runData.agentName = agent.getName();
+    runData.depth = data.depth;
+
+    const prefix = data.depth > 0 ? `  ${'  '.repeat(data.depth - 1)}└─ ` : '';
+    let taskStr: string;
+    if (typeof data.task === 'string') {
+      const trimmed = data.task.substring(0, MAX_MESSAGE_LENGTH);
+      taskStr = data.task.length > MAX_MESSAGE_LENGTH ? `${trimmed}...` : trimmed;
+    } else {
+      taskStr = '[task]';
+    }
+    console.log(`${prefix}🚀 Starting ${data.depth > 0 ? 'sub-' : ''}agent${data.depth > 0 ? ` [${runData.agentName}]` : ''}...`);
+    if (level === 'debug' || level === 'trace') {
+      console.log(`${prefix}   Task: ${taskStr}`);
+    }
+    console.log();
+  };
+
+  // Turn start handler
+  const onTurnStart: AgentEvents<FP>['turn:start'] = (data) => {
+    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+    console.log(`${prefix}📍 Turn ${data.turn + 1}/${data.maxTurns}`);
+  };
+
+  // Assistant message handler
+  const onMessageAssistant: AgentEvents<FP>['message:assistant'] = (data) => {
+    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+
+    // Show assistant message if verbose
+    if (level === 'trace' || level === 'debug') {
+      if (data.content && data.content.length > 0) {
+        const truncated = data.content.length > MAX_MESSAGE_LENGTH ? data.content.substring(0, MAX_MESSAGE_LENGTH) + '...' : data.content;
+        console.log(`${prefix}  💬 ${truncated}`);
+      }
+    }
+
+    // Show tool calls (more important)
+    if (data.toolCalls && data.toolCalls.length > 0) {
+      const toolNames = data.toolCalls.map(tc => tc.name).join(', ');
+      console.log(`${prefix}  🔧 Calling: ${toolNames}`);
+    }
+  };
+
+  // Tool start handler
+  const onToolStart: AgentEvents<FP>['tool:start'] = (data) => {
+    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+    const argsStr = level === 'debug' || level === 'trace' ? `: ${JSON.stringify(data.arguments)}` : '';
+    console.log(`${prefix}     └─ ${data.name}${argsStr}`);
+  };
+
+  // Turn complete handler
+  const onTurnComplete: AgentEvents<FP>['turn:complete'] = (data) => {
+    if (data.tokenUsage && (level === 'debug' || level === 'trace')) {
+      const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+      const { input, output } = data.tokenUsage;
+      const total = input + output;
+      console.log(`${prefix}  📊 Tokens: ${input} in, ${output} out, ${total} total\n`);
+    }
+  };
+
+  // Tool error handler
+  const onToolError: AgentEvents<FP>['tool:error'] = (data) => {
+    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+    console.log(`${prefix}  ❌ ${data.name}: ${data.error.message}`);
+  };
+
+  // Summarization handlers
+  const onSummarizationStart: AgentEvents<FP>['summarization:start'] = (data) => {
+    if (level === 'debug' || level === 'trace') {
+      const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+      console.log(`${prefix}📝 Summarizing context (${Math.round(data.percentUsed * 100)}% used)...`);
+    }
+  };
+
+  const onSummarizationComplete: AgentEvents<FP>['summarization:complete'] = (data) => {
+    if (level === 'debug' || level === 'trace') {
+      const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+      console.log(`${prefix}   Reduced ${data.originalCount} → ${data.summaryLength} messages\n`);
+    }
+  };
+
+  // Complete handler
+  const onRunComplete: AgentEvents<FP>['run:complete'] = (data) => {
+    const duration = Date.now() - (runData.startTime || 0);
+    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+
+    // For sub-agents, show compact completion
+    if (runData.depth && runData.depth > 0) {
+      console.log(`${prefix}✅ Sub-agent [${runData.agentName}] complete (${duration}ms)\n`);
+      return;
+    }
+
+    // For main agent, show full summary
+    console.log('═'.repeat(80));
+    console.log('✅ Agent Complete');
+    console.log('═'.repeat(80));
+
+    if (data.result.finishParams) {
+      console.log('\n📝 Result:', (data.result.finishParams as any).reason || JSON.stringify(data.result.finishParams));
+    }
+
+    console.log('\n' + '─'.repeat(80));
+
+    // Tool Usage section
+    const tools = Object.entries(data.result.runMetadata)
+      .filter(([key]) => key !== 'token_usage')
+      .map(([name, toolData]: [string, any]) => ({ name, uses: toolData.numUses || 0 }))
+      .filter(t => t.uses > 0);
+
+    console.log('╭─ Tool Usage ' + '─'.repeat(65) + '╮');
+    if (tools.length > 0) {
+      tools.forEach(({ name, uses }) => {
+        const callsText = `${uses} call${uses === 1 ? '' : 's'}`;
+        const padding = 80 - 3 - name.length - 1 - callsText.length - 1;
+        console.log(`│  ${name} ${callsText}${' '.repeat(Math.max(0, padding))}│`);
+      });
+    } else {
+      console.log('│  No tools used' + ' '.repeat(63) + '│');
+    }
+    console.log('╰' + '─'.repeat(78) + '╯');
+
+    // Paths section
+    const paths = (data.result.finishParams as any)?.paths || [];
+    console.log('╭─ Paths ' + '─'.repeat(70) + '╮');
+    if (paths.length > 0) {
+      paths.forEach((path: string) => {
+        const displayPath = path.length > 75 ? '...' + path.slice(-72) : path;
+        console.log(`│  ${displayPath.padEnd(75)}│`);
+      });
+    } else {
+      console.log('│  No output paths' + ' '.repeat(60) + '│');
+    }
+    console.log('╰' + '─'.repeat(78) + '╯');
+
+    // Token Usage section
+    const tokenUsage = data.result.runMetadata.token_usage as any;
+    console.log('╭─ Token Usage ' + '─'.repeat(64) + '╮');
+    if (tokenUsage) {
+      const inputStr = tokenUsage.input.toLocaleString().padStart(10);
+      const outputStr = tokenUsage.output.toLocaleString().padStart(10);
+      const totalStr = tokenUsage.total.toLocaleString().padStart(10);
+      console.log(`│  Input  ${inputStr}${' '.repeat(56)}│`);
+      console.log(`│  Output ${outputStr}${' '.repeat(56)}│`);
+      console.log(`│  Total  ${totalStr}${' '.repeat(56)}│`);
+    } else {
+      console.log('│  No token usage data' + ' '.repeat(56) + '│');
+    }
+    console.log('╰' + '─'.repeat(78) + '╯');
+
+    console.log();
+  };
+
+  // Error handler
+  const onRunError: AgentEvents<FP>['run:error'] = (data) => {
+    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+    console.log(`${prefix}❌ Agent error: ${data.error.message}`);
+    if (level === 'debug' || level === 'trace') {
+      console.log(data.error.stack);
+    }
+  };
+
+  // Register handlers
+  agent.on('run:start', onRunStart);
+  agent.on('turn:start', onTurnStart);
+  agent.on('message:assistant', onMessageAssistant);
+  agent.on('tool:start', onToolStart);
+  agent.on('turn:complete', onTurnComplete);
+  agent.on('tool:error', onToolError);
+  agent.on('summarization:start', onSummarizationStart);
+  agent.on('summarization:complete', onSummarizationComplete);
+  agent.on('run:complete', onRunComplete);
+  agent.on('run:error', onRunError);
+
+  // Return cleanup function
+  return () => {
+    agent.off('run:start', onRunStart);
+    agent.off('turn:start', onTurnStart);
+    agent.off('message:assistant', onMessageAssistant);
+    agent.off('tool:start', onToolStart);
+    agent.off('turn:complete', onTurnComplete);
+    agent.off('tool:error', onToolError);
+    agent.off('summarization:start', onSummarizationStart);
+    agent.off('summarization:complete', onSummarizationComplete);
+    agent.off('run:complete', onRunComplete);
+    agent.off('run:error', onRunError);
+  };
+}
+
+/**
+ * Create a structured logger that listens to agent events
+ * @param agent - The agent to monitor
+ * @param options - Logger configuration
+ * @returns Cleanup function to remove event listeners
+ */
+export function createStructuredLogger<FP = unknown>(
+  agent: Agent<any, any>,
+  options: StructuredLoggerOptions = {}
+): () => void {
+  const {
+    level = 'debug',
+    pretty = true,
+    useConsoleFormat = true,
+    pinoOptions = {},
+  } = options;
+
+  // Use clean console format by default
+  if (useConsoleFormat) {
+    return createConsoleLogger(agent, level);
+  }
+
+  // Fallback to Pino for JSON logging
+  const logger = pino({
+    level,
+    ...pinoOptions,
+    ...(pretty && {
+      transport: {
+        target: 'pino-pretty',
+        options: {
+          colorize: true,
+          translateTime: 'HH:MM:ss',
+          ignore: 'pid,hostname',
+        },
+      },
+    }),
+  });
+
+  // Event handlers
+  const handlers: {
+    [K in keyof AgentEvents<FP>]: AgentEvents<FP>[K];
+  } = {
+    'run:start': (data) => {
+      logger.info({
+        event: 'run:start',
+        task: typeof data.task === 'string' ? data.task.substring(0, MAX_MESSAGE_LENGTH) : '[complex]',
+        depth: data.depth,
+      }, 'Agent run started');
+    },
+
+    'run:complete': (data) => {
+      logger.info({
+        event: 'run:complete',
+        duration: data.duration,
+        messageGroups: data.result.messageHistory.length,
+        tokenUsage: data.result.runMetadata.token_usage,
+        finishParams: data.result.finishParams,
+      }, `Agent run completed in ${data.duration}ms`);
+    },
+
+    'run:error': (data) => {
+      logger.error({
+        event: 'run:error',
+        error: {
+          message: data.error.message,
+          stack: data.error.stack,
+          name: data.error.name,
+        },
+        duration: data.duration,
+      }, `Agent run failed: ${data.error.message}`);
+    },
+
+    'turn:start': (data) => {
+      logger.debug({
+        event: 'turn:start',
+        turn: data.turn + 1,
+        maxTurns: data.maxTurns,
+        progress: `${data.turn + 1}/${data.maxTurns}`,
+      }, `Turn ${data.turn + 1}/${data.maxTurns} started`);
+    },
+
+    'turn:complete': (data) => {
+      logger.debug({
+        event: 'turn:complete',
+        turn: data.turn + 1,
+        tokenUsage: data.tokenUsage,
+      }, `Turn ${data.turn + 1} completed`);
+    },
+
+    'message:assistant': (data) => {
+      logger.trace({
+        event: 'message:assistant',
+        content: data.content.substring(0, MAX_MESSAGE_LENGTH),
+        toolCalls: data.toolCalls?.map(tc => tc.name) || [],
+      }, 'Assistant message');
+    },
+
+    'message:tool': (data) => {
+      logger.trace({
+        event: 'message:tool',
+        toolName: data.name,
+        success: data.success,
+        content: data.content.substring(0, MAX_MESSAGE_LENGTH),
+      }, `Tool message: ${data.name}`);
+    },
+
+    'tool:start': (data) => {
+      logger.debug({
+        event: 'tool:start',
+        toolName: data.name,
+        arguments: data.arguments,
+      }, `Executing tool: ${data.name}`);
+    },
+
+    'tool:complete': (data) => {
+      logger.debug({
+        event: 'tool:complete',
+        toolName: data.name,
+        success: data.success,
+        resultLength: data.result.length,
+      }, `Tool ${data.success ? 'succeeded' : 'failed'}: ${data.name}`);
+    },
+
+    'tool:error': (data) => {
+      logger.warn({
+        event: 'tool:error',
+        toolName: data.name,
+        error: {
+          message: data.error.message,
+          name: data.error.name,
+        },
+      }, `Tool error: ${data.name} - ${data.error.message}`);
+    },
+
+    'summarization:start': (data) => {
+      logger.info({
+        event: 'summarization:start',
+        percentUsed: Math.round(data.percentUsed * 100),
+        messageCount: data.messageCount,
+      }, `Context summarization started (${Math.round(data.percentUsed * 100)}% used)`);
+    },
+
+    'summarization:complete': (data) => {
+      logger.info({
+        event: 'summarization:complete',
+        summaryLength: data.summaryLength,
+        originalCount: data.originalCount,
+        reduction: `${data.originalCount} → ${data.summaryLength}`,
+      }, `Context summarized: ${data.originalCount} → ${data.summaryLength} messages`);
+    },
+  };
+
+  // Register all event handlers
+  for (const [event, handler] of Object.entries(handlers)) {
+    agent.on(event as keyof AgentEvents<FP>, handler as any);
+  }
+
+  // Return cleanup function
+  return () => {
+    for (const [event, handler] of Object.entries(handlers)) {
+      agent.off(event as keyof AgentEvents<FP>, handler as any);
+    }
+  };
+}

@@ -1,0 +1,105 @@
+{
+  "name": "stirrupjs",
+  "version": "0.1.0",
+  "description": "The lightweight foundation for building agents in TypeScript",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./clients/openai": {
+      "types": "./dist/clients/openai-client.d.ts",
+      "import": "./dist/clients/openai-client.js"
+    },
+    "./clients/anthropic": {
+      "types": "./dist/clients/anthropic-client.d.ts",
+      "import": "./dist/clients/anthropic-client.js"
+    },
+    "./clients/vercel-ai": {
+      "types": "./dist/clients/vercel-ai-client.d.ts",
+      "import": "./dist/clients/vercel-ai-client.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node --input-type=module -e \"import { rmSync } from 'node:fs'; rmSync('dist',{ recursive:true, force:true });\" && tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "ai",
+    "agent",
+    "llm",
+    "openai",
+    "anthropic",
+    "tools",
+    "framework",
+    "typescript"
+  ],
+  "author": "Artificial Analysis, Inc.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@mozilla/readability": "^0.6.0",
+    "async-retry": "^1.3.3",
+    "axios": "^1.7.7",
+    "boxen": "^8.0.1",
+    "chalk": "^5.3.0",
+    "cli-table3": "^0.6.5",
+    "dotenv": "^16.4.5",
+    "execa": "^9.4.0",
+    "ffmpeg-static": "^5.2.0",
+    "file-type": "^19.5.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "jsdom": "^25.0.1",
+    "openai": "^4.68.4",
+    "ora": "^8.1.0",
+    "pino": "^9.6.0",
+    "pino-pretty": "^13.0.0",
+    "sharp": "^0.33.5",
+    "turndown": "^7.2.0",
+    "zod": "^3.23.8"
+  },
+  "optionalDependencies": {
+    "@ai-sdk/anthropic": "^3.0.2",
+    "@ai-sdk/openai": "^1.0.5",
+    "@anthropic-ai/sdk": "^0.32.1",
+    "@e2b/code-interpreter": "^1.0.1",
+    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@types/dockerode": "^3.3.31",
+    "ai": "^6.0.3",
+    "dockerode": "^4.0.2"
+  },
+  "devDependencies": {
+    "@types/async-retry": "^1.4.9",
+    "@types/fluent-ffmpeg": "^2.1.27",
+    "@types/jsdom": "^27.0.0",
+    "@types/node": "^22.7.7",
+    "@types/turndown": "^5.0.5",
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "@vitest/coverage-v8": "^4.0.16",
+    "@vitest/ui": "^4.0.16",
+    "eslint": "^8.57.1",
+    "prettier": "^3.3.3",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.3",
+    "vitest": "^4.0.16"
+  }
+}
