@@ -347,7 +347,7 @@ npm run build
 npm link
 
 # In your project
-npm link stirrupjs
+npm link @stirrup/stirrup
 ```
 
 ### Option 3: Publish Private Package
@@ -355,7 +355,7 @@ npm link stirrupjs
 ```bash
 # Update package.json name
 {
-  "name": "@myorg/stirrupjs",
+  "name": "@myorg/stirrup",
   "version": "1.0.0"
 }
 

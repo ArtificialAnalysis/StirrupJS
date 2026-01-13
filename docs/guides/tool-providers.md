@@ -67,7 +67,7 @@ class DatabaseToolProvider implements ToolProvider {
 Manages local code execution with temp directory:
 
 ```typescript
-import { LocalCodeExecToolProvider } from 'stirrupjs/tools';
+import { LocalCodeExecToolProvider } from '@stirrup/stirrup';
 
 const provider = new LocalCodeExecToolProvider(
   ['python', 'node', 'uv'],  // Allowed commands
@@ -81,7 +81,7 @@ const provider = new LocalCodeExecToolProvider(
 Manages web tools (fetch, search):
 
 ```typescript
-import { WebToolProvider } from 'stirrupjs/tools';
+import { WebToolProvider } from '@stirrup/stirrup';
 
 const provider = new WebToolProvider(
   180_000,                        // Timeout (ms)
@@ -94,7 +94,7 @@ const provider = new WebToolProvider(
 Manages Docker-based code execution:
 
 ```typescript
-import { DockerCodeExecToolProvider } from 'stirrupjs/tools';
+import { DockerCodeExecToolProvider } from '@stirrup/stirrup';
 
 const provider = new DockerCodeExecToolProvider('python:3.12-slim');
 ```
@@ -104,7 +104,7 @@ const provider = new DockerCodeExecToolProvider('python:3.12-slim');
 Manages E2B cloud sandbox:
 
 ```typescript
-import { E2BCodeExecToolProvider } from 'stirrupjs/tools';
+import { E2BCodeExecToolProvider } from '@stirrup/stirrup';
 
 const provider = new E2BCodeExecToolProvider({
   apiKey: process.env.E2B_API_KEY!,
@@ -117,7 +117,7 @@ const provider = new E2BCodeExecToolProvider({
 ### Basic Example
 
 ```typescript
-import type { ToolProvider, BaseTool } from 'stirrupjs';
+import type { ToolProvider, BaseTool } from '@stirrup/stirrup';
 
 class MyToolProvider implements ToolProvider {
   name = 'my-tools';
@@ -142,8 +142,8 @@ class MyToolProvider implements ToolProvider {
 
 ```typescript
 import { Pool } from 'pg';
-import type { ToolProvider, Tool, ToolResult } from 'stirrupjs';
-import { ToolUseCountMetadata } from 'stirrupjs';
+import type { ToolProvider, Tool, ToolResult } from '@stirrup/stirrup';
+import { ToolUseCountMetadata } from '@stirrup/stirrup';
 import { z } from 'zod';
 
 class DatabaseToolProvider implements ToolProvider {
@@ -197,7 +197,7 @@ class DatabaseToolProvider implements ToolProvider {
 ```typescript
 import { mkdir, rm } from 'fs/promises';
 import { join } from 'path';
-import type { ToolProvider } from 'stirrupjs';
+import type { ToolProvider } from '@stirrup/stirrup';
 
 class FileSystemToolProvider implements ToolProvider {
   name = 'filesystem';

@@ -9,8 +9,8 @@ This page contains working examples for common patterns and use cases.
 Create an agent that can use tools and finish when done:
 
 ```typescript
-import { Agent, SIMPLE_FINISH_TOOL, DEFAULT_TOOLS } from 'stirrupjs';
-import { ChatCompletionsClient } from 'stirrupjs/clients';
+import { Agent, SIMPLE_FINISH_TOOL, DEFAULT_TOOLS } from '@stirrup/stirrup';
+import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 
 const client = new ChatCompletionsClient({
   apiKey: process.env.OPENROUTER_API_KEY!,
@@ -51,8 +51,8 @@ const agent = new Agent({
 
 ```typescript
 import { z } from 'zod';
-import type { Tool, ToolResult } from 'stirrupjs';
-import { ToolUseCountMetadata } from 'stirrupjs';
+import type { Tool, ToolResult } from '@stirrup/stirrup';
+import { ToolUseCountMetadata } from '@stirrup/stirrup';
 
 const CalculatorParamsSchema = z.object({
   expression: z.string().describe('Mathematical expression to evaluate'),
@@ -90,8 +90,8 @@ const agent = new Agent({
 
 ```typescript
 import { z } from 'zod';
-import type { Tool, ToolResult } from 'stirrupjs';
-import { ToolUseCountMetadata } from 'stirrupjs';
+import type { Tool, ToolResult } from '@stirrup/stirrup';
+import { ToolUseCountMetadata } from '@stirrup/stirrup';
 
 const WeatherParamsSchema = z.object({
   location: z.string().describe('City name or location'),
@@ -119,8 +119,8 @@ const weatherTool: Tool<typeof WeatherParamsSchema, ToolUseCountMetadata> = {
 
 ```typescript
 import { z } from 'zod';
-import type { Tool, ToolResult } from 'stirrupjs';
-import { ToolUseCountMetadata } from 'stirrupjs';
+import type { Tool, ToolResult } from '@stirrup/stirrup';
+import { ToolUseCountMetadata } from '@stirrup/stirrup';
 
 const DbQueryParamsSchema = z.object({
   query: z.string().describe('SQL query to execute'),
@@ -152,8 +152,7 @@ const databaseTool: Tool<typeof DbQueryParamsSchema, ToolUseCountMetadata> = {
 Delegate specialized tasks to sub-agents:
 
 ```typescript
-import { Agent, SIMPLE_FINISH_TOOL, CALCULATOR_TOOL } from 'stirrupjs';
-import { WebToolProvider } from 'stirrupjs/tools';
+import { Agent, SIMPLE_FINISH_TOOL, CALCULATOR_TOOL, WebToolProvider } from '@stirrup/stirrup';
 
 // Create specialized sub-agents
 const researchAgent = new Agent({
@@ -285,7 +284,7 @@ try {
 The easiest way to monitor agent activity:
 
 ```typescript
-import { createStructuredLogger } from 'stirrupjs';
+import { createStructuredLogger } from '@stirrup/stirrup';
 
 const cleanup = createStructuredLogger(agent, {
   level: 'debug',  // or 'info'
@@ -334,7 +333,7 @@ await session2.run('Analyze data and create visualizations');
 ### Local Execution (Default)
 
 ```typescript
-import { LocalCodeExecToolProvider } from 'stirrupjs/tools';
+import { LocalCodeExecToolProvider } from '@stirrup/stirrup';
 
 const agent = new Agent({
   client,
@@ -346,7 +345,7 @@ const agent = new Agent({
 ### Docker Execution
 
 ```typescript
-import { DockerCodeExecToolProvider } from 'stirrupjs/tools';
+import { DockerCodeExecToolProvider } from '@stirrup/stirrup';
 
 const agent = new Agent({
   client,
@@ -358,7 +357,7 @@ const agent = new Agent({
 ### E2B Cloud Sandboxes
 
 ```typescript
-import { E2BCodeExecToolProvider } from 'stirrupjs/tools';
+import { E2BCodeExecToolProvider } from '@stirrup/stirrup';
 
 const agent = new Agent({
   client,

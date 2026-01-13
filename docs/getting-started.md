@@ -13,15 +13,15 @@ This guide walks you through installing StirrupJS and creating your first agent.
 Install via npm, yarn, or pnpm:
 
 ```bash
-npm install stirrupjs
+npm install @stirrup/stirrup
 ```
 
 ```bash
-yarn add stirrupjs
+yarn add @stirrup/stirrup
 ```
 
 ```bash
-pnpm add stirrupjs
+pnpm add @stirrup/stirrup
 ```
 
 ## Your First Agent
@@ -29,8 +29,8 @@ pnpm add stirrupjs
 Create a simple agent that can search the web and execute code:
 
 ```typescript
-import { Agent, SIMPLE_FINISH_TOOL, DEFAULT_TOOLS, createStructuredLogger } from 'stirrupjs';
-import { ChatCompletionsClient } from 'stirrupjs/clients';
+import { Agent, SIMPLE_FINISH_TOOL, DEFAULT_TOOLS, createStructuredLogger } from '@stirrup/stirrup';
+import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 
 // Create an LLM client
 const client = new ChatCompletionsClient({
@@ -81,8 +81,7 @@ By default, agents include code execution and web tools:
 Extend with additional tools:
 
 ```typescript
-import { Agent, SIMPLE_FINISH_TOOL, CALCULATOR_TOOL } from 'stirrupjs';
-import { WebToolProvider } from 'stirrupjs/tools';
+import { Agent, SIMPLE_FINISH_TOOL, CALCULATOR_TOOL, WebToolProvider } from '@stirrup/stirrup';
 
 const agent = new Agent({
   client,
@@ -134,7 +133,7 @@ const client = new ChatCompletionsClient({
 The `run()` method returns an `AgentRunResult`:
 
 ```typescript
-import type { AgentRunResult, FinishParams } from 'stirrupjs';
+import type { AgentRunResult, FinishParams } from '@stirrup/stirrup';
 
 const result: AgentRunResult<FinishParams> = await session.run("Your task");
 

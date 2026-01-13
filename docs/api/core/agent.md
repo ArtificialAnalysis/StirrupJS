@@ -305,8 +305,8 @@ interface TokenUsage {
 ### Basic Agent
 
 ```typescript
-import { Agent, SIMPLE_FINISH_TOOL, DEFAULT_TOOLS } from 'stirrupjs';
-import { ChatCompletionsClient } from 'stirrupjs/clients';
+import { Agent, SIMPLE_FINISH_TOOL, DEFAULT_TOOLS } from '@stirrup/stirrup';
+import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 
 const client = new ChatCompletionsClient({
   apiKey: process.env.OPENROUTER_API_KEY!,

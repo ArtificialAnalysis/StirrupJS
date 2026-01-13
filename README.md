@@ -10,7 +10,7 @@
 </div>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/stirrupjs"><img src="https://img.shields.io/npm/v/stirrupjs" alt="NPM version" /></a>&nbsp;<!--
+  <a href="https://www.npmjs.com/package/@stirrup/stirrup"><img src="https://img.shields.io/npm/v/@stirrup%2Fstirrup" alt="NPM version" /></a>&nbsp;<!--
   --><a href="https://github.com/ArtificialAnalysis/Stirrup/blob/main/LICENSE"><img src="https://img.shields.io/github/license/ArtificialAnalysis/Stirrup" alt="License" /></a>&nbsp;<!--
   --><a href="https://stirrup.artificialanalysis.ai"><img src="https://img.shields.io/badge/MkDocs-4F46E5?logo=materialformkdocs&logoColor=fff" alt="MkDocs" /></a>
 </p>
@@ -42,18 +42,18 @@ Stirrup is a lightweight framework, or starting point template, for building age
 ## Installation
 
 ```bash
-npm install stirrupjs
+npm install @stirrup/stirrup
 # or
-pnpm add stirrupjs
+pnpm add @stirrup/stirrup
 # or
-yarn add stirrupjs
+yarn add @stirrup/stirrup
 ```
 
 ## Quick Start
 
 ```typescript
-import { Agent, DEFAULT_TOOLS, SIMPLE_FINISH_TOOL } from 'stirrupjs';
-import { ChatCompletionsClient } from 'stirrupjs/clients/openai';
+import { Agent, DEFAULT_TOOLS, SIMPLE_FINISH_TOOL } from '@stirrup/stirrup';
+import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 
 async function main() {
   // Create client using ChatCompletionsClient
@@ -122,7 +122,7 @@ Stirrup supports multiple providers out of the box.
 ### OpenAI-Compatible APIs
 
 ```typescript
-import { ChatCompletionsClient } from 'stirrupjs/clients/openai';
+import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 
 // Create client using Deepseek's OpenAI-compatible endpoint
 const client = new ChatCompletionsClient({
@@ -137,7 +137,7 @@ const agent = new Agent({ client, name: 'deepseek_agent', ... });
 ### Anthropic
 
 ```typescript
-import { AnthropicClient } from 'stirrupjs/clients/anthropic';
+import { AnthropicClient } from '@stirrup/stirrup/clients/anthropic';
 
 const client = new AnthropicClient({
   model: 'claude-sonnet-4-5',
@@ -152,7 +152,7 @@ const agent = new Agent({ client, name: 'claude_agent', ... });
 Stirrup integrates seamlessly with the Vercel AI SDK, giving you access to any provider supported by their ecosystem.
 
 ```typescript
-import { VercelAIClient } from 'stirrupjs/clients/vercel-ai';
+import { VercelAIClient } from '@stirrup/stirrup/clients/vercel-ai';
 import { anthropic } from '@ai-sdk/anthropic';
 
 const client = new VercelAIClient({
@@ -174,8 +174,8 @@ When you use `DEFAULT_TOOLS`, you get:
 ## Extending with Pre-Built Tools
 
 ```typescript
-import { Agent, DEFAULT_TOOLS, CALCULATOR_TOOL, SIMPLE_FINISH_TOOL } from 'stirrupjs';
-import { ChatCompletionsClient } from 'stirrupjs/clients/openai';
+import { Agent, DEFAULT_TOOLS, CALCULATOR_TOOL, SIMPLE_FINISH_TOOL } from '@stirrup/stirrup';
+import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 
 // Create client
 const client = new ChatCompletionsClient({ ... });
@@ -195,7 +195,7 @@ Stirrup uses Zod for type-safe tool definitions:
 
 ```typescript
 import { z } from 'zod';
-import { Agent, Tool, ToolUseCountMetadata, DEFAULT_TOOLS } from 'stirrupjs';
+import { Agent, Tool, ToolUseCountMetadata, DEFAULT_TOOLS } from '@stirrup/stirrup';
 
 // Define parameters schema
 const GreetParamsSchema = z.object({

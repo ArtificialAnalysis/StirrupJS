@@ -22,18 +22,18 @@ StirrupJS is a lightweight TypeScript/JavaScript framework for building AI agent
 ## Installation
 
 ```bash
-npm install stirrupjs
+npm install @stirrup/stirrup
 # or
-yarn add stirrupjs
+yarn add @stirrup/stirrup
 # or
-pnpm add stirrupjs
+pnpm add @stirrup/stirrup
 ```
 
 ## Quick Start
 
 ```typescript
-import { Agent, SIMPLE_FINISH_TOOL, DEFAULT_TOOLS } from 'stirrupjs';
-import { ChatCompletionsClient } from 'stirrupjs/clients';
+import { Agent, SIMPLE_FINISH_TOOL, DEFAULT_TOOLS } from '@stirrup/stirrup';
+import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 
 // Create an LLM client (uses OpenAI-compatible API)
 const client = new ChatCompletionsClient({
@@ -118,8 +118,7 @@ When you create an `Agent` without specifying tools, it uses `DEFAULT_TOOLS`:
 ## Extending with Pre-Built Tools
 
 ```typescript
-import { Agent, SIMPLE_FINISH_TOOL, CALCULATOR_TOOL } from 'stirrupjs';
-import { WebToolProvider } from 'stirrupjs/tools';
+import { Agent, SIMPLE_FINISH_TOOL, CALCULATOR_TOOL, WebToolProvider } from '@stirrup/stirrup';
 
 const agent = new Agent({
   client,
@@ -135,8 +134,8 @@ const agent = new Agent({
 
 ```typescript
 import { z } from 'zod';
-import type { Tool, ToolResult } from 'stirrupjs';
-import { ToolUseCountMetadata } from 'stirrupjs';
+import type { Tool, ToolResult } from '@stirrup/stirrup';
+import { ToolUseCountMetadata } from '@stirrup/stirrup';
 
 // Define parameter schema
 const WeatherParamsSchema = z.object({

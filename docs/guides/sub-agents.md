@@ -15,8 +15,7 @@ A sub-agent is simply an agent converted to a tool using the `toTool()` method. 
 ## Basic Example
 
 ```typescript
-import { Agent, SIMPLE_FINISH_TOOL, CALCULATOR_TOOL } from 'stirrupjs';
-import { WebToolProvider } from 'stirrupjs/tools';
+import { Agent, SIMPLE_FINISH_TOOL, CALCULATOR_TOOL, WebToolProvider } from '@stirrup/stirrup';
 
 // Create specialized sub-agents
 const researchAgent = new Agent({
@@ -327,7 +326,7 @@ Files flow from sub-agent → parent:
 Structured logging automatically tracks sub-agent activity:
 
 ```typescript
-import { createStructuredLogger } from 'stirrupjs';
+import { createStructuredLogger } from '@stirrup/stirrup';
 
 const cleanup = createStructuredLogger(coordinator, { level: 'debug' });
 
@@ -465,8 +464,7 @@ More agents = more complexity:
 ### Complete Data Pipeline
 
 ```typescript
-import { Agent, SIMPLE_FINISH_TOOL } from 'stirrupjs';
-import { WebToolProvider, LocalCodeExecToolProvider } from 'stirrupjs/tools';
+import { Agent, SIMPLE_FINISH_TOOL, WebToolProvider, LocalCodeExecToolProvider } from '@stirrup/stirrup';
 
 // Fetch data from web
 const fetcher = new Agent({

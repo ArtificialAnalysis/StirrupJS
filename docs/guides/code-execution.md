@@ -20,7 +20,7 @@ The `LocalCodeExecToolProvider` executes commands in a temporary directory on yo
 ### Basic Usage
 
 ```typescript
-import { LocalCodeExecToolProvider } from 'stirrupjs/tools';
+import { LocalCodeExecToolProvider } from '@stirrup/stirrup';
 
 const agent = new Agent({
   client,
@@ -32,7 +32,7 @@ const agent = new Agent({
 Or use `DEFAULT_TOOLS` which includes local execution:
 
 ```typescript
-import { DEFAULT_TOOLS } from 'stirrupjs';
+import { DEFAULT_TOOLS } from '@stirrup/stirrup';
 
 const agent = new Agent({
   client,
@@ -97,7 +97,7 @@ Requires Docker to be installed and running on your machine.
 ### Basic Usage
 
 ```typescript
-import { DockerCodeExecToolProvider } from 'stirrupjs/tools';
+import { DockerCodeExecToolProvider } from '@stirrup/stirrup';
 
 const agent = new Agent({
   client,
@@ -160,7 +160,7 @@ export E2B_API_KEY='your-key-here'
 ### Basic Usage
 
 ```typescript
-import { E2BCodeExecToolProvider } from 'stirrupjs/tools';
+import { E2BCodeExecToolProvider } from '@stirrup/stirrup';
 
 const agent = new Agent({
   client,

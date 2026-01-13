@@ -42,7 +42,7 @@ interface ToolResult<M = unknown> {
 Signal task completion:
 
 ```typescript
-import { SIMPLE_FINISH_TOOL, type FinishParams } from 'stirrupjs';
+import { SIMPLE_FINISH_TOOL, type FinishParams } from '@stirrup/stirrup';
 
 // Schema
 interface FinishParams {
@@ -62,7 +62,7 @@ const agent = new Agent({
 Perform calculations:
 
 ```typescript
-import { CALCULATOR_TOOL } from 'stirrupjs';
+import { CALCULATOR_TOOL } from '@stirrup/stirrup';
 
 // Schema
 interface CalculatorParams {
@@ -81,7 +81,7 @@ const agent = new Agent({
 Standard tool set (code execution + web):
 
 ```typescript
-import { DEFAULT_TOOLS } from 'stirrupjs';
+import { DEFAULT_TOOLS } from '@stirrup/stirrup';
 
 // Includes:
 // - LocalCodeExecToolProvider

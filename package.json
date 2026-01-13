@@ -1,5 +1,5 @@
 {
-  "name": "stirrupjs",
+  "name": "@stirrup/stirrup",
   "version": "1.0.0",
   "description": "The lightweight foundation for building agents in TypeScript",
   "type": "module",

@@ -24,8 +24,8 @@ interface Tool<P extends z.ZodType, M = unknown> {
 
 ```typescript
 import { z } from 'zod';
-import type { Tool, ToolResult } from 'stirrupjs';
-import { ToolUseCountMetadata } from 'stirrupjs';
+import type { Tool, ToolResult } from '@stirrup/stirrup';
+import { ToolUseCountMetadata } from '@stirrup/stirrup';
 
 // 1. Define parameter schema
 const GreetParamsSchema = z.object({
@@ -162,7 +162,7 @@ executor: async (params) => {
 ### Image Results
 
 ```typescript
-import { ImageContentBlock } from 'stirrupjs';
+import { ImageContentBlock } from '@stirrup/stirrup';
 
 executor: async (params) => {
   const imageData = await generateImage(params);

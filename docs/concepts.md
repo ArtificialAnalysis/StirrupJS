@@ -9,7 +9,7 @@ The `Agent` class orchestrates the agent loop: receiving user input, calling the
 ### Configuration
 
 ```typescript
-import { Agent, SIMPLE_FINISH_TOOL, DEFAULT_TOOLS } from 'stirrupjs';
+import { Agent, SIMPLE_FINISH_TOOL, DEFAULT_TOOLS } from '@stirrup/stirrup';
 
 const agent = new Agent({
   client,              // Required: LLM client
@@ -57,7 +57,7 @@ The client handles communication with the LLM. StirrupJS includes `ChatCompletio
 ### ChatCompletionsClient
 
 ```typescript
-import { ChatCompletionsClient } from 'stirrupjs/clients';
+import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 
 const client = new ChatCompletionsClient({
   apiKey: process.env.OPENROUTER_API_KEY!,
@@ -99,7 +99,7 @@ Tools extend the agent's capabilities. StirrupJS includes built-in tools and mak
 By default, agents have access to:
 
 ```typescript
-import { DEFAULT_TOOLS } from 'stirrupjs';
+import { DEFAULT_TOOLS } from '@stirrup/stirrup';
 
 // DEFAULT_TOOLS = [
 //   new LocalCodeExecToolProvider(),
@@ -122,8 +122,8 @@ Define custom tools with Zod schemas:
 
 ```typescript
 import { z } from 'zod';
-import type { Tool, ToolResult } from 'stirrupjs';
-import { ToolUseCountMetadata } from 'stirrupjs';
+import type { Tool, ToolResult } from '@stirrup/stirrup';
+import { ToolUseCountMetadata } from '@stirrup/stirrup';
 
 const WeatherParamsSchema = z.object({
   location: z.string().describe('City name'),
@@ -151,7 +151,7 @@ See [Creating Tools](guides/tools.md) for detailed examples.
 Tool providers manage tools with lifecycle requirements (connections, temp directories, etc.):
 
 ```typescript
-import { ToolProvider } from 'stirrupjs';
+import { ToolProvider } from '@stirrup/stirrup';
 
 class DatabaseToolProvider implements ToolProvider {
   name = 'database';
@@ -237,7 +237,7 @@ try {
 The `run()` method returns an `AgentRunResult`:
 
 ```typescript
-import type { AgentRunResult, FinishParams } from 'stirrupjs';
+import type { AgentRunResult, FinishParams } from '@stirrup/stirrup';
 
 const result: AgentRunResult<FinishParams> = await session.run('task');
 ```
@@ -326,7 +326,7 @@ See [Skills Guide](guides/skills.md) for full documentation.
 The easiest way to monitor agent activity:
 
 ```typescript
-import { createStructuredLogger } from 'stirrupjs';
+import { createStructuredLogger } from '@stirrup/stirrup';
 
 const cleanup = createStructuredLogger(agent, {
   level: 'debug',  // 'debug' shows all details, 'info' shows summary

@@ -75,7 +75,7 @@ interface ChatCompletionResponse {
 ### OpenRouter
 
 ```typescript
-import { ChatCompletionsClient } from 'stirrupjs/clients';
+import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 
 const client = new ChatCompletionsClient({
   apiKey: process.env.OPENROUTER_API_KEY!,
