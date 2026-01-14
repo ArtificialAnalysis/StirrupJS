@@ -1,10 +1,6 @@
-<div align="center">
+![stirrup-banner](https://github.com/user-attachments/assets/f38df9e4-8c92-43f4-a159-c3c7534381f1)<div align="center">
   <a href="https://stirrup.artificialanalysis.ai">
-    <picture>
-        <img alt="Stirrup" src="https://github.com/ArtificialAnalysis/Stirrupjs/blob/bb2ecc03446336414da6c49d2068e873eb9e4dd4/docs/assets/stirrup-banner.svg" width="700">
-    </picture>
   </a>
-  <br></br>
   <h1>The lightweight foundation for building agents (TypeScript implementation)</h1>
 <br>
 </div>
