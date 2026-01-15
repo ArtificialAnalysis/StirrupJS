@@ -164,7 +164,7 @@ For deep customization of the framework internals, you can clone and modify Stir
 
 ```bash
 # Clone the repository
-git clone https://github.com/ArtificialAnalysis/stirrup-js.git
+git clone https://github.com/ArtificialAnalysis/stirrupJS.git
 cd stirrup-js
 
 # Install dependencies

@@ -2,8 +2,8 @@ site_name: StirrupJS Documentation
 site_url: https://stirrupjs.artificialanalysis.ai
 site_description: Lightweight TypeScript/JavaScript framework for building AI agents
 site_author: Artificial Analysis, Inc.
-repo_url: https://github.com/ArtificialAnalysis/stirrup-js
-repo_name: stirrup-js
+repo_url: https://github.com/ArtificialAnalysis/stirrupJS
+repo_name: stirrupJS
 
 theme:
   name: material

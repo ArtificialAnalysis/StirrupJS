@@ -22,7 +22,7 @@ For most use cases, you don't need full customization:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/ArtificialAnalysis/stirrup-js.git
+git clone https://github.com/ArtificialAnalysis/stirrupJS.git
 cd stirrup-js
 ```
 
@@ -402,7 +402,7 @@ See `CONTRIBUTING.md` in the repository.
 
 Check out these projects using StirrupJS:
 
-- [StirrupJS](https://github.com/ArtificialAnalysis/stirrup-js) - The main repository
+- [StirrupJS](https://github.com/ArtificialAnalysis/stirrupJS) - The main repository
 - [Stirrup](https://github.com/ArtificialAnalysis/Stirrup) - Python version
 
 ## Best Practices
