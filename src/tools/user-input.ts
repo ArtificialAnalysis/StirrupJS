@@ -9,25 +9,27 @@ import { z } from 'zod';
 import type { Tool, ToolResult } from '../core/models.js';
 import { ToolUseCountMetadata } from '../core/models.js';
 
-export const UserInputParamsSchema = z.object({
-  question: z.string().min(1).describe('A single question to ask the user (*not* multiple questions)'),
-  questionType: z
-    .enum(['text', 'choice', 'confirm'])
-    .default('text')
-    .describe("Type of question: 'text' for free-form, 'choice' for multiple choice, 'confirm' for yes/no"),
-  choices: z.array(z.string()).optional().describe("List of valid choices (required when questionType is 'choice')"),
-  default: z.string().default('').describe('Default value if user presses Enter without input'),
-}).superRefine((val, ctx) => {
-  if (val.questionType === 'choice') {
-    if (!val.choices || val.choices.length === 0) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['choices'],
-        message: "choices is required when questionType is 'choice'",
-      });
+export const UserInputParamsSchema = z
+  .object({
+    question: z.string().min(1).describe('A single question to ask the user (*not* multiple questions)'),
+    questionType: z
+      .enum(['text', 'choice', 'confirm'])
+      .default('text')
+      .describe("Type of question: 'text' for free-form, 'choice' for multiple choice, 'confirm' for yes/no"),
+    choices: z.array(z.string()).optional().describe("List of valid choices (required when questionType is 'choice')"),
+    default: z.string().default('').describe('Default value if user presses Enter without input'),
+  })
+  .superRefine((val, ctx) => {
+    if (val.questionType === 'choice') {
+      if (!val.choices || val.choices.length === 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['choices'],
+          message: "choices is required when questionType is 'choice'",
+        });
+      }
     }
-  }
-});
+  });
 
 export type UserInputParams = z.infer<typeof UserInputParamsSchema>;
 
@@ -105,5 +107,3 @@ export const USER_INPUT_TOOL: Tool<typeof UserInputParamsSchema, ToolUseCountMet
     }
   },
 };
-
-

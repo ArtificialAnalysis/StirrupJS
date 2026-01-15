@@ -20,7 +20,8 @@ export class LocalCodeExecToolProvider extends CodeExecToolProvider {
   constructor(allowedCommands?: string[], _tempBaseDir?: string, description?: string) {
     super(
       allowedCommands,
-      description ?? 'Execute a shell command in the execution environment. Returns exit code, stdout, and stderr as XML. Use `uv` to manage packages.'
+      description ??
+        'Execute a shell command in the execution environment. Returns exit code, stdout, and stderr as XML. Use `uv` to manage packages.'
     );
   }
 

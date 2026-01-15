@@ -4,11 +4,7 @@
 
 import { EventEmitter } from 'events';
 import { z } from 'zod';
-import {
-  AGENT_MAX_TURNS,
-  CONTEXT_SUMMARIZATION_CUTOFF,
-  FINISH_TOOL_NAME,
-} from '../constants.js';
+import { AGENT_MAX_TURNS, CONTEXT_SUMMARIZATION_CUTOFF, FINISH_TOOL_NAME } from '../constants.js';
 import { BASE_SYSTEM_PROMPT, MESSAGE_SUMMARIZER_BRIDGE_TEMPLATE, MESSAGE_SUMMARIZER_PROMPT } from '../prompts/index.js';
 import { type CodeExecToolProvider } from '../tools/code-exec/base.js';
 import { formatSkillsSection, loadSkillsMetadata } from '../skills/index.js';
@@ -27,11 +23,7 @@ import type {
   ToolResult,
   UserMessage,
 } from './models.js';
-import {
-  AgentValidationError,
-  TokenUsageMetadata,
-  aggregateMetadata,
-} from './models.js';
+import { AgentValidationError, TokenUsageMetadata, aggregateMetadata } from './models.js';
 import { createSessionState, getParentDepth, sessionContext, type SessionState } from './session.js';
 import { SubAgentMetadata, SubAgentParamsSchema, type SubAgentParams } from './sub-agent.js';
 
@@ -151,22 +143,10 @@ export interface AgentRunResult<FP> {
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export declare interface Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> {
-  on<E extends keyof AgentEvents<z.infer<FP>>>(
-    event: E,
-    listener: AgentEvents<z.infer<FP>>[E]
-  ): this;
-  once<E extends keyof AgentEvents<z.infer<FP>>>(
-    event: E,
-    listener: AgentEvents<z.infer<FP>>[E]
-  ): this;
-  emit<E extends keyof AgentEvents<z.infer<FP>>>(
-    event: E,
-    ...args: Parameters<AgentEvents<z.infer<FP>>[E]>
-  ): boolean;
-  off<E extends keyof AgentEvents<z.infer<FP>>>(
-    event: E,
-    listener: AgentEvents<z.infer<FP>>[E]
-  ): this;
+  on<E extends keyof AgentEvents<z.infer<FP>>>(event: E, listener: AgentEvents<z.infer<FP>>[E]): this;
+  once<E extends keyof AgentEvents<z.infer<FP>>>(event: E, listener: AgentEvents<z.infer<FP>>[E]): this;
+  emit<E extends keyof AgentEvents<z.infer<FP>>>(event: E, ...args: Parameters<AgentEvents<z.infer<FP>>[E]>): boolean;
+  off<E extends keyof AgentEvents<z.infer<FP>>>(event: E, listener: AgentEvents<z.infer<FP>>[E]): this;
 }
 
 /**
@@ -223,9 +203,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
 
     // Validate agent name
     if (!/^[a-zA-Z0-9_-]{1,128}$/.test(name)) {
-      throw new AgentValidationError(
-        'Agent name must be alphanumeric (with _ or -) and 1-128 characters long'
-      );
+      throw new AgentValidationError('Agent name must be alphanumeric (with _ or -) and 1-128 characters long');
     }
 
     this.client = client;
@@ -295,27 +273,23 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
 
       signal?.throwIfAborted();
 
-    const messages: ChatMessage[] = typeof initMessages === 'string'
-      ? [{ role: 'user', content: initMessages } as UserMessage]
-      : initMessages;
+      const messages: ChatMessage[] =
+        typeof initMessages === 'string' ? [{ role: 'user', content: initMessages } as UserMessage] : initMessages;
 
-    const systemPrompt = this.buildSystemPrompt();
-    const allMessages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt } as SystemMessage,
-      ...messages,
-    ];
+      const systemPrompt = this.buildSystemPrompt();
+      const allMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt } as SystemMessage, ...messages];
 
-    const messageHistory: ChatMessage[][] = [];
-    let currentMessages = allMessages;
-    let currentGroup: ChatMessage[] = [...currentMessages];
+      const messageHistory: ChatMessage[][] = [];
+      let currentMessages = allMessages;
+      let currentGroup: ChatMessage[] = [...currentMessages];
 
-    const runMetadata: Record<string, unknown[]> = {
-      token_usage: [],
-    };
+      const runMetadata: Record<string, unknown[]> = {
+        token_usage: [],
+      };
 
-    for (const toolName of this.activeTools.keys()) {
-      runMetadata[toolName] = [];
-    }
+      for (const toolName of this.activeTools.keys()) {
+        runMetadata[toolName] = [];
+      }
 
       let finishParams: z.infer<FP> | undefined;
       for (let turn = 0; turn < this.maxTurns; turn++) {
@@ -327,9 +301,10 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
 
         if (assistantMessage.content) {
           this.emit('message:assistant', {
-            content: typeof assistantMessage.content === 'string'
-              ? assistantMessage.content
-              : JSON.stringify(assistantMessage.content),
+            content:
+              typeof assistantMessage.content === 'string'
+                ? assistantMessage.content
+                : JSON.stringify(assistantMessage.content),
             toolCalls: assistantMessage.toolCalls,
           });
         }
@@ -337,9 +312,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
         for (const toolMsg of toolMessages) {
           this.emit('message:tool', {
             name: toolMsg.name || 'unknown',
-            content: typeof toolMsg.content === 'string'
-              ? toolMsg.content
-              : JSON.stringify(toolMsg.content),
+            content: typeof toolMsg.content === 'string' ? toolMsg.content : JSON.stringify(toolMsg.content),
             success: !toolMsg.content?.toString().includes('Error'),
           });
         }
@@ -353,26 +326,26 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
         const lastTokenUsage = tokenUsageArray?.[tokenUsageArray.length - 1];
         this.emit('turn:complete', { turn, tokenUsage: lastTokenUsage });
 
-      if (assistantMessage.toolCalls) {
-        for (const toolCall of assistantMessage.toolCalls) {
-          if (toolCall.name === FINISH_TOOL_NAME && this.finishTool) {
-            try {
-              const params = this.finishTool.parameters
-                ? (this.finishTool.parameters.parse(this.parseToolCallArguments(toolCall.arguments)) as z.infer<FP>)
-                : undefined;
-              finishParams = params;
-              break;
-            } catch {
-              // Invalid finish params, continue
+        if (assistantMessage.toolCalls) {
+          for (const toolCall of assistantMessage.toolCalls) {
+            if (toolCall.name === FINISH_TOOL_NAME && this.finishTool) {
+              try {
+                const params = this.finishTool.parameters
+                  ? (this.finishTool.parameters.parse(this.parseToolCallArguments(toolCall.arguments)) as z.infer<FP>)
+                  : undefined;
+                finishParams = params;
+                break;
+              } catch {
+                // Invalid finish params, continue
+              }
             }
           }
         }
-      }
 
-      if (finishParams !== undefined) {
-        messageHistory.push(currentGroup);
-        break;
-      }
+        if (finishParams !== undefined) {
+          messageHistory.push(currentGroup);
+          break;
+        }
 
         if (assistantMessage.tokenUsage) {
           const totalTokens = assistantMessage.tokenUsage.input + assistantMessage.tokenUsage.output;
@@ -454,15 +427,11 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
 
       signal?.throwIfAborted();
 
-      const messages: ChatMessage[] = typeof initMessages === 'string'
-        ? [{ role: 'user', content: initMessages } as UserMessage]
-        : initMessages;
+      const messages: ChatMessage[] =
+        typeof initMessages === 'string' ? [{ role: 'user', content: initMessages } as UserMessage] : initMessages;
 
       const systemPrompt = this.buildSystemPrompt();
-      const allMessages: ChatMessage[] = [
-        { role: 'system', content: systemPrompt } as SystemMessage,
-        ...messages,
-      ];
+      const allMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt } as SystemMessage, ...messages];
 
       const messageHistory: ChatMessage[][] = [];
       let currentMessages = allMessages;
@@ -500,9 +469,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
           yield {
             type: 'tool:result',
             toolName: toolMsg.name || 'unknown',
-            result: typeof toolMsg.content === 'string'
-              ? toolMsg.content
-              : JSON.stringify(toolMsg.content),
+            result: typeof toolMsg.content === 'string' ? toolMsg.content : JSON.stringify(toolMsg.content),
             success: !toolMsg.content?.toString().includes('Error'),
             timestamp: Date.now(),
           };
@@ -669,9 +636,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
     try {
       result = await tool.executor(params);
 
-      const contentStr = typeof result.content === 'string'
-        ? result.content
-        : JSON.stringify(result.content);
+      const contentStr = typeof result.content === 'string' ? result.content : JSON.stringify(result.content);
       this.emit('tool:complete', {
         name: toolCall.name,
         result: contentStr,
@@ -725,10 +690,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
     const summaryText = typeof summary === 'string' ? summary : JSON.stringify(summary);
     const bridgeMessage = MESSAGE_SUMMARIZER_BRIDGE_TEMPLATE(summaryText);
 
-    return [
-      ...taskContext,
-      { role: 'user', content: bridgeMessage } as UserMessage,
-    ];
+    return [...taskContext, { role: 'user', content: bridgeMessage } as UserMessage];
   }
 
   /**
@@ -740,7 +702,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
     // User interaction guidance based on whether user_input tool is available
     if (this.activeTools.has('user_input')) {
       prompt +=
-        "\n\nYou have access to the user_input tool which allows you to ask the user questions when you need clarification or are uncertain about something.";
+        '\n\nYou have access to the user_input tool which allows you to ask the user questions when you need clarification or are uncertain about something.';
     } else {
       prompt += '\n\nYou are not able to interact with the user during the task.';
     }
@@ -783,9 +745,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
       const codeExecProviders = this.tools.filter((t): t is CodeExecToolProvider => this.isCodeExecProvider(t));
 
       if (codeExecProviders.length > 1) {
-        throw new Error(
-          `Agent can only have one CodeExecToolProvider, found ${codeExecProviders.length}`
-        );
+        throw new Error(`Agent can only have one CodeExecToolProvider, found ${codeExecProviders.length}`);
       }
 
       for (const tool of codeExecProviders) {
@@ -847,9 +807,11 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
       if (!spec) continue;
       if (this.isGlobPattern(spec)) {
         // Node.js 22+ supports fs.promises.glob
-        const globFn = (fs as unknown as {
-          glob?: (pattern: string, opts?: Record<string, unknown>) => Promise<string[]>;
-        }).glob;
+        const globFn = (
+          fs as unknown as {
+            glob?: (pattern: string, opts?: Record<string, unknown>) => Promise<string[]>;
+          }
+        ).glob;
         if (!globFn) {
           throw new Error('Glob patterns in inputFiles require Node.js 22+ (fs.promises.glob not available)');
         }
@@ -919,11 +881,11 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
         // Safe access to potential paths property on finish params
         const finishParams = this.lastFinishParams;
         let paths: string[] = [];
-        
+
         if (
-          finishParams && 
-          typeof finishParams === 'object' && 
-          'paths' in finishParams && 
+          finishParams &&
+          typeof finishParams === 'object' &&
+          'paths' in finishParams &&
           Array.isArray((finishParams as Record<string, unknown>).paths)
         ) {
           paths = (finishParams as Record<string, unknown>).paths as string[];
@@ -942,27 +904,18 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
               );
 
               if (result.saved.length > 0) {
-                console.log(
-                  `Saved ${result.saved.length} file(s) to ${this.sessionState.outputDir}`
-                );
+                console.log(`Saved ${result.saved.length} file(s) to ${this.sessionState.outputDir}`);
               }
 
               if (Object.keys(result.failed).length > 0) {
-                console.warn(
-                  `Failed to save ${Object.keys(result.failed).length} file(s)`,
-                  result.failed
-                );
+                console.warn(`Failed to save ${Object.keys(result.failed).length} file(s)`, result.failed);
               }
             }
           } else {
             if (this.sessionState.parentExecEnv) {
               const execEnv = this.sessionState.execEnv;
               if (execEnv) {
-                await execEnv.saveOutputFiles(
-                  paths,
-                  this.sessionState.outputDir,
-                  this.sessionState.parentExecEnv
-                );
+                await execEnv.saveOutputFiles(paths, this.sessionState.outputDir, this.sessionState.parentExecEnv);
               }
             }
           }

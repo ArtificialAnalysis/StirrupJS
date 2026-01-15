@@ -87,12 +87,15 @@ export class MCPToolProvider implements ToolProvider {
           env: serverConfig.config.env,
         });
 
-        const client = new Client({
-          name: 'stirrup-client',
-          version: '1.0.0',
-        }, {
-          capabilities: {},
-        });
+        const client = new Client(
+          {
+            name: 'stirrup-client',
+            version: '1.0.0',
+          },
+          {
+            capabilities: {},
+          }
+        );
 
         await client.connect(transport);
 
@@ -120,9 +123,7 @@ export class MCPToolProvider implements ToolProvider {
    */
   private createToolFromMcp(mcpTool: any, client: Client, serverName: string): Tool {
     // Convert JSON Schema to Zod schema
-    const zodSchema = mcpTool.inputSchema
-      ? this.jsonSchemaToZod(mcpTool.inputSchema)
-      : z.object({});
+    const zodSchema = mcpTool.inputSchema ? this.jsonSchemaToZod(mcpTool.inputSchema) : z.object({});
 
     // Create tool with prefixed name
     const toolName = `${serverName}__${mcpTool.name}`;
@@ -136,7 +137,7 @@ export class MCPToolProvider implements ToolProvider {
           // Call MCP tool
           const result = await client.callTool({
             name: mcpTool.name,
-            arguments: params as any,
+            arguments: params,
           });
 
           // Format response as XML
@@ -149,7 +150,7 @@ export class MCPToolProvider implements ToolProvider {
               } else if (item.type === 'image') {
                 content += `  <image>${item.data}</image>\n`;
               } else if (item.type === 'resource') {
-                content += `  <resource uri="${(item as any).uri}">${(item as any).text || ''}</resource>\n`;
+                content += `  <resource uri="${item.uri}">${item.text || ''}</resource>\n`;
               }
             }
           }

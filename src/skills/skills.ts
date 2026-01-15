@@ -101,8 +101,3 @@ export function formatSkillsSection(skills: SkillMetadata[]): string {
 
   return lines.join('\n');
 }
-
-
-
-
-

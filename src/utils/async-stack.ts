@@ -146,9 +146,7 @@ export async function withAsyncStack<T>(fn: (stack: AsyncDisposableStack) => Pro
  * @param create Function that creates and returns a resource with cleanup
  * @returns Wrapped function that returns an AsyncDisposable
  */
-export function makeAsyncDisposable<T>(
-  create: () => Promise<[T, AsyncDisposeFn]>
-): () => Promise<T & AsyncDisposable> {
+export function makeAsyncDisposable<T>(create: () => Promise<[T, AsyncDisposeFn]>): () => Promise<T & AsyncDisposable> {
   return async () => {
     const [resource, cleanup] = await create();
     return Object.assign(resource as object, {
