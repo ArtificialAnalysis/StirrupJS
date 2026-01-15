@@ -174,7 +174,11 @@ export class TokenUsageMetadata implements Addable<TokenUsageMetadata> {
   }
 
   add(other: TokenUsageMetadata): TokenUsageMetadata {
-    return new TokenUsageMetadata(this.input + other.input, this.output + other.output, this.reasoning + other.reasoning);
+    return new TokenUsageMetadata(
+      this.input + other.input,
+      this.output + other.output,
+      this.reasoning + other.reasoning
+    );
   }
 
   toJSON() {
@@ -210,10 +214,7 @@ export class ToolUseCountMetadata implements Addable<ToolUseCountMetadata> {
  * @param prefix Prefix for nested metadata keys (used for sub-agents)
  * @returns Aggregated metadata dictionary
  */
-export function aggregateMetadata(
-  metadata: Record<string, unknown[]>,
-  prefix: string = ''
-): Record<string, unknown> {
+export function aggregateMetadata(metadata: Record<string, unknown[]>, prefix: string = ''): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
   for (const [key, values] of Object.entries(metadata)) {

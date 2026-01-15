@@ -24,10 +24,7 @@ export interface StructuredLoggerOptions {
  * Create a console logger with clean, readable output
  * @internal
  */
-function createConsoleLogger<FP = unknown>(
-  agent: Agent<any, any>,
-  level: string
-): () => void {
+function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string): () => void {
   const runData: {
     startTime?: number;
     agentName?: string;
@@ -48,7 +45,9 @@ function createConsoleLogger<FP = unknown>(
     } else {
       taskStr = '[task]';
     }
-    console.log(`${prefix}🚀 Starting ${data.depth > 0 ? 'sub-' : ''}agent${data.depth > 0 ? ` [${runData.agentName}]` : ''}...`);
+    console.log(
+      `${prefix}🚀 Starting ${data.depth > 0 ? 'sub-' : ''}agent${data.depth > 0 ? ` [${runData.agentName}]` : ''}...`
+    );
     if (level === 'debug' || level === 'trace') {
       console.log(`${prefix}   Task: ${taskStr}`);
     }
@@ -68,14 +67,17 @@ function createConsoleLogger<FP = unknown>(
     // Show assistant message if verbose
     if (level === 'trace' || level === 'debug') {
       if (data.content && data.content.length > 0) {
-        const truncated = data.content.length > MAX_MESSAGE_LENGTH ? data.content.substring(0, MAX_MESSAGE_LENGTH) + '...' : data.content;
+        const truncated =
+          data.content.length > MAX_MESSAGE_LENGTH
+            ? data.content.substring(0, MAX_MESSAGE_LENGTH) + '...'
+            : data.content;
         console.log(`${prefix}  💬 ${truncated}`);
       }
     }
 
     // Show tool calls (more important)
     if (data.toolCalls && data.toolCalls.length > 0) {
-      const toolNames = data.toolCalls.map(tc => tc.name).join(', ');
+      const toolNames = data.toolCalls.map((tc) => tc.name).join(', ');
       console.log(`${prefix}  🔧 Calling: ${toolNames}`);
     }
   };
@@ -144,7 +146,7 @@ function createConsoleLogger<FP = unknown>(
     const tools = Object.entries(data.result.runMetadata)
       .filter(([key]) => key !== 'token_usage')
       .map(([name, toolData]: [string, any]) => ({ name, uses: toolData.numUses || 0 }))
-      .filter(t => t.uses > 0);
+      .filter((t) => t.uses > 0);
 
     console.log('╭─ Tool Usage ' + '─'.repeat(65) + '╮');
     if (tools.length > 0) {
@@ -235,12 +237,7 @@ export function createStructuredLogger<FP = unknown>(
   agent: Agent<any, any>,
   options: StructuredLoggerOptions = {}
 ): () => void {
-  const {
-    level = 'debug',
-    pretty = true,
-    useConsoleFormat = true,
-    pinoOptions = {},
-  } = options;
+  const { level = 'debug', pretty = true, useConsoleFormat = true, pinoOptions = {} } = options;
 
   // Use clean console format by default
   if (useConsoleFormat) {
@@ -268,112 +265,148 @@ export function createStructuredLogger<FP = unknown>(
     [K in keyof AgentEvents<FP>]: AgentEvents<FP>[K];
   } = {
     'run:start': (data) => {
-      logger.info({
-        event: 'run:start',
-        task: typeof data.task === 'string' ? data.task.substring(0, MAX_MESSAGE_LENGTH) : '[complex]',
-        depth: data.depth,
-      }, 'Agent run started');
+      logger.info(
+        {
+          event: 'run:start',
+          task: typeof data.task === 'string' ? data.task.substring(0, MAX_MESSAGE_LENGTH) : '[complex]',
+          depth: data.depth,
+        },
+        'Agent run started'
+      );
     },
 
     'run:complete': (data) => {
-      logger.info({
-        event: 'run:complete',
-        duration: data.duration,
-        messageGroups: data.result.messageHistory.length,
-        tokenUsage: data.result.runMetadata.token_usage,
-        finishParams: data.result.finishParams,
-      }, `Agent run completed in ${data.duration}ms`);
+      logger.info(
+        {
+          event: 'run:complete',
+          duration: data.duration,
+          messageGroups: data.result.messageHistory.length,
+          tokenUsage: data.result.runMetadata.token_usage,
+          finishParams: data.result.finishParams,
+        },
+        `Agent run completed in ${data.duration}ms`
+      );
     },
 
     'run:error': (data) => {
-      logger.error({
-        event: 'run:error',
-        error: {
-          message: data.error.message,
-          stack: data.error.stack,
-          name: data.error.name,
+      logger.error(
+        {
+          event: 'run:error',
+          error: {
+            message: data.error.message,
+            stack: data.error.stack,
+            name: data.error.name,
+          },
+          duration: data.duration,
         },
-        duration: data.duration,
-      }, `Agent run failed: ${data.error.message}`);
+        `Agent run failed: ${data.error.message}`
+      );
     },
 
     'turn:start': (data) => {
-      logger.debug({
-        event: 'turn:start',
-        turn: data.turn + 1,
-        maxTurns: data.maxTurns,
-        progress: `${data.turn + 1}/${data.maxTurns}`,
-      }, `Turn ${data.turn + 1}/${data.maxTurns} started`);
+      logger.debug(
+        {
+          event: 'turn:start',
+          turn: data.turn + 1,
+          maxTurns: data.maxTurns,
+          progress: `${data.turn + 1}/${data.maxTurns}`,
+        },
+        `Turn ${data.turn + 1}/${data.maxTurns} started`
+      );
     },
 
     'turn:complete': (data) => {
-      logger.debug({
-        event: 'turn:complete',
-        turn: data.turn + 1,
-        tokenUsage: data.tokenUsage,
-      }, `Turn ${data.turn + 1} completed`);
+      logger.debug(
+        {
+          event: 'turn:complete',
+          turn: data.turn + 1,
+          tokenUsage: data.tokenUsage,
+        },
+        `Turn ${data.turn + 1} completed`
+      );
     },
 
     'message:assistant': (data) => {
-      logger.trace({
-        event: 'message:assistant',
-        content: data.content.substring(0, MAX_MESSAGE_LENGTH),
-        toolCalls: data.toolCalls?.map(tc => tc.name) || [],
-      }, 'Assistant message');
+      logger.trace(
+        {
+          event: 'message:assistant',
+          content: data.content.substring(0, MAX_MESSAGE_LENGTH),
+          toolCalls: data.toolCalls?.map((tc) => tc.name) || [],
+        },
+        'Assistant message'
+      );
     },
 
     'message:tool': (data) => {
-      logger.trace({
-        event: 'message:tool',
-        toolName: data.name,
-        success: data.success,
-        content: data.content.substring(0, MAX_MESSAGE_LENGTH),
-      }, `Tool message: ${data.name}`);
+      logger.trace(
+        {
+          event: 'message:tool',
+          toolName: data.name,
+          success: data.success,
+          content: data.content.substring(0, MAX_MESSAGE_LENGTH),
+        },
+        `Tool message: ${data.name}`
+      );
     },
 
     'tool:start': (data) => {
-      logger.debug({
-        event: 'tool:start',
-        toolName: data.name,
-        arguments: data.arguments,
-      }, `Executing tool: ${data.name}`);
+      logger.debug(
+        {
+          event: 'tool:start',
+          toolName: data.name,
+          arguments: data.arguments,
+        },
+        `Executing tool: ${data.name}`
+      );
     },
 
     'tool:complete': (data) => {
-      logger.debug({
-        event: 'tool:complete',
-        toolName: data.name,
-        success: data.success,
-        resultLength: data.result.length,
-      }, `Tool ${data.success ? 'succeeded' : 'failed'}: ${data.name}`);
+      logger.debug(
+        {
+          event: 'tool:complete',
+          toolName: data.name,
+          success: data.success,
+          resultLength: data.result.length,
+        },
+        `Tool ${data.success ? 'succeeded' : 'failed'}: ${data.name}`
+      );
     },
 
     'tool:error': (data) => {
-      logger.warn({
-        event: 'tool:error',
-        toolName: data.name,
-        error: {
-          message: data.error.message,
-          name: data.error.name,
+      logger.warn(
+        {
+          event: 'tool:error',
+          toolName: data.name,
+          error: {
+            message: data.error.message,
+            name: data.error.name,
+          },
         },
-      }, `Tool error: ${data.name} - ${data.error.message}`);
+        `Tool error: ${data.name} - ${data.error.message}`
+      );
     },
 
     'summarization:start': (data) => {
-      logger.info({
-        event: 'summarization:start',
-        percentUsed: Math.round(data.percentUsed * 100),
-        messageCount: data.messageCount,
-      }, `Context summarization started (${Math.round(data.percentUsed * 100)}% used)`);
+      logger.info(
+        {
+          event: 'summarization:start',
+          percentUsed: Math.round(data.percentUsed * 100),
+          messageCount: data.messageCount,
+        },
+        `Context summarization started (${Math.round(data.percentUsed * 100)}% used)`
+      );
     },
 
     'summarization:complete': (data) => {
-      logger.info({
-        event: 'summarization:complete',
-        summaryLength: data.summaryLength,
-        originalCount: data.originalCount,
-        reduction: `${data.originalCount} → ${data.summaryLength}`,
-      }, `Context summarized: ${data.originalCount} → ${data.summaryLength} messages`);
+      logger.info(
+        {
+          event: 'summarization:complete',
+          summaryLength: data.summaryLength,
+          originalCount: data.originalCount,
+          reduction: `${data.originalCount} → ${data.summaryLength}`,
+        },
+        `Context summarized: ${data.originalCount} → ${data.summaryLength} messages`
+      );
     },
   };
 

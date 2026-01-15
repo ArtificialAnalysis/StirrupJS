@@ -10,7 +10,9 @@ import { ToolUseCountMetadata } from '../core/models.js';
  * Parameters for the finish tool
  */
 export const FinishParamsSchema = z.object({
-  reason: z.string().describe('Result of the task, including a summary of what was accomplished and the final answer (if applicable)'),
+  reason: z
+    .string()
+    .describe('Result of the task, including a summary of what was accomplished and the final answer (if applicable)'),
   paths: z
     .union([z.string(), z.array(z.string())])
     .default([])
@@ -33,7 +35,9 @@ export const FinishParamsSchema = z.object({
 
       return arr;
     })
-    .describe('Output file paths (can be a single string or array of strings). Example: ["output.png", "data.csv"] or "output.png"'),
+    .describe(
+      'Output file paths (can be a single string or array of strings). Example: ["output.png", "data.csv"] or "output.png"'
+    ),
 });
 
 export type FinishParams = z.infer<typeof FinishParamsSchema>;

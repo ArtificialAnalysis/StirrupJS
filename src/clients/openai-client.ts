@@ -5,14 +5,7 @@
 
 import OpenAI from 'openai';
 import retry from 'async-retry';
-import type {
-  LLMClient,
-  ChatMessage,
-  AssistantMessage,
-  Tool,
-  ToolCall,
-  TokenUsage,
-} from '../core/models.js';
+import type { LLMClient, ChatMessage, AssistantMessage, Tool, ToolCall, TokenUsage } from '../core/models.js';
 import { ContextOverflowError } from '../core/models.js';
 import { toOpenAIMessages, toOpenAITools } from './utils.js';
 import { MAX_RETRY_ATTEMPTS, RETRY_MIN_TIMEOUT, RETRY_MAX_TIMEOUT } from '../constants.js';
@@ -177,7 +170,7 @@ export class ChatCompletionsClient implements LLMClient {
         input: response.usage.prompt_tokens,
         output: response.usage.completion_tokens,
         reasoning: this.config.includeReasoningTokens
-          ? usageWithDetails.completion_tokens_details?.reasoning_tokens ?? 0
+          ? (usageWithDetails.completion_tokens_details?.reasoning_tokens ?? 0)
           : 0,
       };
     }

@@ -12,11 +12,7 @@ import { fileTypeFromBuffer } from 'file-type';
  * @param maxPixels Maximum total pixels
  * @returns Adjusted [width, height] with even dimensions
  */
-export function calculateDownscaledDimensions(
-  width: number,
-  height: number,
-  maxPixels: number
-): [number, number] {
+export function calculateDownscaledDimensions(width: number, height: number, maxPixels: number): [number, number] {
   const currentPixels = width * height;
 
   if (currentPixels <= maxPixels) {

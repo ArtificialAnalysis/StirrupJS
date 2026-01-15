@@ -142,15 +142,19 @@ export class DockerCodeExecToolProvider extends CodeExecToolProvider {
 
       // Collect output with timeout
       const outputPromise = new Promise<void>((resolve) => {
-        this.container!.modem.demuxStream(stream, {
-          write: (chunk: Buffer) => {
-            stdout += chunk.toString();
-          },
-        } as any, {
-          write: (chunk: Buffer) => {
-            stderr += chunk.toString();
-          },
-        } as any);
+        this.container!.modem.demuxStream(
+          stream,
+          {
+            write: (chunk: Buffer) => {
+              stdout += chunk.toString();
+            },
+          } as any,
+          {
+            write: (chunk: Buffer) => {
+              stderr += chunk.toString();
+            },
+          } as any
+        );
 
         stream.on('end', resolve);
       });
@@ -158,9 +162,7 @@ export class DockerCodeExecToolProvider extends CodeExecToolProvider {
       // Race between output collection and timeout
       await Promise.race([
         outputPromise,
-        new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('timeout')), timeout)
-        ),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeout)),
       ]);
 
       // Get exit code

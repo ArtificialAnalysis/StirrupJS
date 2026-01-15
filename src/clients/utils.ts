@@ -252,8 +252,7 @@ export function toAnthropicMessages(messages: ChatMessage[]): {
 
         // Add text content
         if (message.content) {
-          const textContent =
-            typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
+          const textContent = typeof message.content === 'string' ? message.content : JSON.stringify(message.content);
           if (textContent) {
             (result.content as unknown[]).push({
               type: 'text',
@@ -325,9 +324,7 @@ export function toOpenAITools(tools: Map<string, Tool>): unknown[] {
         for (const [key, value] of Object.entries(shape)) {
           properties[key] = zodToJsonSchema(value);
           const isOptionalFn = (value as { isOptional?: unknown }).isOptional;
-          const isOptional = typeof isOptionalFn === 'function'
-            ? (isOptionalFn as () => boolean)()
-            : false;
+          const isOptional = typeof isOptionalFn === 'function' ? (isOptionalFn as () => boolean)() : false;
           if (!isOptional) required.push(key);
         }
       }
@@ -372,9 +369,7 @@ export function toAnthropicTools(tools: Map<string, Tool>): unknown[] {
         for (const [key, value] of Object.entries(shape)) {
           properties[key] = zodToJsonSchema(value);
           const isOptionalFn = (value as { isOptional?: unknown }).isOptional;
-          const isOptional = typeof isOptionalFn === 'function'
-            ? (isOptionalFn as () => boolean)()
-            : false;
+          const isOptional = typeof isOptionalFn === 'function' ? (isOptionalFn as () => boolean)() : false;
           if (!isOptional) required.push(key);
         }
       }
