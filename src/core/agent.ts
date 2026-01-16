@@ -33,7 +33,7 @@ import { SubAgentMetadata, SubAgentParamsSchema, type SubAgentParams } from './s
  */
 export interface AgentEvents<FP = unknown> {
   'run:start': (data: { task: string | ChatMessage[]; depth: number }) => void;
-  'run:complete': (data: { result: AgentRunResult<FP>; duration: number }) => void;
+  'run:complete': (data: { result: AgentRunResult<FP>; duration: number; outputDir?: string }) => void;
   'run:error': (data: { error: Error; duration: number }) => void;
 
   'turn:start': (data: { turn: number; maxTurns: number }) => void;
@@ -299,16 +299,6 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
 
         const { assistantMessage, toolMessages } = await this.step(currentMessages, runMetadata);
 
-        if (assistantMessage.content) {
-          this.emit('message:assistant', {
-            content:
-              typeof assistantMessage.content === 'string'
-                ? assistantMessage.content
-                : JSON.stringify(assistantMessage.content),
-            toolCalls: assistantMessage.toolCalls,
-          });
-        }
-
         for (const toolMsg of toolMessages) {
           this.emit('message:tool', {
             name: toolMsg.name || 'unknown',
@@ -386,7 +376,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
       this.lastFinishParams = finishParams;
 
       const duration = Date.now() - startTime;
-      this.emit('run:complete', { result, duration });
+      this.emit('run:complete', { result, duration, outputDir: this.sessionState?.outputDir });
 
       return result;
     } catch (error) {
@@ -575,6 +565,17 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
 
     if (assistantMessage.tokenUsage) {
       runMetadata['token_usage']?.push(TokenUsageMetadata.fromTokenUsage(assistantMessage.tokenUsage));
+    }
+
+    // Emit assistant message BEFORE tool execution so logs appear in correct order
+    if (assistantMessage.content || assistantMessage.toolCalls) {
+      this.emit('message:assistant', {
+        content:
+          typeof assistantMessage.content === 'string'
+            ? assistantMessage.content
+            : JSON.stringify(assistantMessage.content),
+        toolCalls: assistantMessage.toolCalls,
+      });
     }
 
     const toolMessages: ToolMessage[] = [];

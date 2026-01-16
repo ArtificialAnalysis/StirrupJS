@@ -45,8 +45,8 @@ The paths parameter must always be an array of strings, even if there's only one
 
   // 3. Use session to configure output directory (files will be auto-saved on cleanup)
   // Structured logging is enabled by default with debug level
-  await using session = agent.session({ 
-    outputDir: './output'
+  await using session = agent.session({
+    outputDir: './output',
   });
 
   // 4. Run the agent with a task

@@ -3,6 +3,9 @@
  * Provides beautiful, readable logging for agent runs
  */
 const MAX_MESSAGE_LENGTH = 10_000;
+const getTerminalWidth = () => process.stdout.columns || 80;
+import boxen from 'boxen';
+import chalk from 'chalk';
 import pino from 'pino';
 import type { Agent, AgentEvents } from '../../core/agent.js';
 
@@ -29,6 +32,8 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
     startTime?: number;
     agentName?: string;
     depth?: number;
+    currentTurn?: number;
+    maxTurns?: number;
   } = {};
 
   // Start handler
@@ -56,37 +61,111 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
 
   // Turn start handler
   const onTurnStart: AgentEvents<FP>['turn:start'] = (data) => {
-    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
-    console.log(`${prefix}📍 Turn ${data.turn + 1}/${data.maxTurns}`);
+    runData.currentTurn = data.turn + 1;
+    runData.maxTurns = data.maxTurns;
   };
 
   // Assistant message handler
   const onMessageAssistant: AgentEvents<FP>['message:assistant'] = (data) => {
-    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+    const indent = runData.depth && runData.depth > 0 ? '  '.repeat(runData.depth) : '';
 
-    // Show assistant message if verbose
-    if (level === 'trace' || level === 'debug') {
-      if (data.content && data.content.length > 0) {
-        const truncated =
-          data.content.length > MAX_MESSAGE_LENGTH
-            ? data.content.substring(0, MAX_MESSAGE_LENGTH) + '...'
-            : data.content;
-        console.log(`${prefix}  💬 ${truncated}`);
+    // Build content for the box
+    const contentParts: string[] = [];
+
+    // Add message content
+    if (data.content && data.content.length > 0) {
+      const truncated =
+        data.content.length > MAX_MESSAGE_LENGTH ? data.content.substring(0, MAX_MESSAGE_LENGTH) + '...' : data.content;
+      contentParts.push(truncated);
+    }
+
+    // Add tool calls section
+    if (data.toolCalls && data.toolCalls.length > 0) {
+      if (contentParts.length > 0) contentParts.push('');
+      contentParts.push(chalk.gray('Tool Calls:'));
+      for (const tc of data.toolCalls) {
+        contentParts.push(`  🔧 ${chalk.yellow(tc.name)}`);
+        // Format arguments nicely
+        try {
+          const args = JSON.parse(tc.arguments) as Record<string, unknown>;
+          for (const [key, value] of Object.entries(args)) {
+            const strValue = typeof value === 'string' ? value : JSON.stringify(value);
+            const truncated = strValue.length > 1000 ? strValue.substring(0, 1000) + '...' : strValue;
+            const displayValue = truncated.replace(/\n/g, '\\n');
+            contentParts.push(chalk.gray(`     ${key}=${displayValue}`));
+          }
+        } catch {
+          contentParts.push(chalk.gray(`     ${tc.arguments}`));
+        }
       }
     }
 
-    // Show tool calls (more important)
-    if (data.toolCalls && data.toolCalls.length > 0) {
-      const toolNames = data.toolCalls.map((tc) => tc.name).join(', ');
-      console.log(`${prefix}  🔧 Calling: ${toolNames}`);
+    // Only show box if there's content
+    if (contentParts.length > 0) {
+      const title = `AssistantMessage │ ${runData.agentName} │ Turn ${runData.currentTurn || '?'}/${runData.maxTurns || '?'}`;
+      const termWidth = getTerminalWidth();
+      const boxWidth = indent ? termWidth - indent.length : termWidth;
+      const box = boxen(contentParts.join('\n'), {
+        padding: { top: 0, bottom: 0, left: 1, right: 1 },
+        borderStyle: 'round',
+        borderColor: 'cyan',
+        title,
+        titleAlignment: 'left',
+        width: boxWidth,
+      });
+      // Add indent for sub-agents
+      if (indent) {
+        console.log(
+          box
+            .split('\n')
+            .map((line) => indent + line)
+            .join('\n')
+        );
+      } else {
+        console.log(box);
+      }
     }
   };
 
-  // Tool start handler
-  const onToolStart: AgentEvents<FP>['tool:start'] = (data) => {
-    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
-    const argsStr = level === 'debug' || level === 'trace' ? `: ${JSON.stringify(data.arguments)}` : '';
-    console.log(`${prefix}     └─ ${data.name}${argsStr}`);
+  // Tool complete handler
+  const onToolComplete: AgentEvents<FP>['tool:complete'] = (data) => {
+    const indent = runData.depth && runData.depth > 0 ? '  '.repeat(runData.depth) : '';
+
+    // Truncate result if too long
+    let truncatedResult: string;
+    if (data.result.length > 1000) {
+      truncatedResult = data.result.substring(0, 500) + '\n...\n' + data.result.substring(data.result.length - 500);
+    } else {
+      truncatedResult = data.result;
+    }
+
+    const statusIcon = data.success ? chalk.green('✓') : chalk.red('✗');
+    const turnInfo = runData.currentTurn ? ` │ Turn ${runData.currentTurn}/${runData.maxTurns}` : '';
+    const title = `${statusIcon} ToolResult │ ${data.name}${turnInfo}`;
+    const borderColor = data.success ? 'green' : 'red';
+
+    const termWidth = getTerminalWidth();
+    const boxWidth = indent ? termWidth - indent.length : termWidth;
+    const box = boxen(truncatedResult, {
+      padding: { top: 0, bottom: 0, left: 1, right: 1 },
+      borderStyle: 'round',
+      borderColor,
+      title,
+      titleAlignment: 'left',
+      width: boxWidth,
+    });
+
+    // Add indent for sub-agents
+    if (indent) {
+      console.log(
+        box
+          .split('\n')
+          .map((line) => indent + line)
+          .join('\n')
+      );
+    } else {
+      console.log(box);
+    }
   };
 
   // Turn complete handler
@@ -131,16 +210,18 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
       return;
     }
 
+    const termWidth = getTerminalWidth();
+
     // For main agent, show full summary
-    console.log('═'.repeat(80));
+    console.log('═'.repeat(termWidth));
     console.log('✅ Agent Complete');
-    console.log('═'.repeat(80));
+    console.log('═'.repeat(termWidth));
 
     if (data.result.finishParams) {
       console.log('\n📝 Result:', (data.result.finishParams as any).reason || JSON.stringify(data.result.finishParams));
     }
 
-    console.log('\n' + '─'.repeat(80));
+    console.log('\n' + '─'.repeat(termWidth));
 
     // Tool Usage section
     const tools = Object.entries(data.result.runMetadata)
@@ -148,45 +229,66 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
       .map(([name, toolData]: [string, any]) => ({ name, uses: toolData.numUses || 0 }))
       .filter((t) => t.uses > 0);
 
-    console.log('╭─ Tool Usage ' + '─'.repeat(65) + '╮');
-    if (tools.length > 0) {
-      tools.forEach(({ name, uses }) => {
-        const callsText = `${uses} call${uses === 1 ? '' : 's'}`;
-        const padding = 80 - 3 - name.length - 1 - callsText.length - 1;
-        console.log(`│  ${name} ${callsText}${' '.repeat(Math.max(0, padding))}│`);
-      });
-    } else {
-      console.log('│  No tools used' + ' '.repeat(63) + '│');
-    }
-    console.log('╰' + '─'.repeat(78) + '╯');
+    const toolContent =
+      tools.length > 0
+        ? tools.map(({ name, uses }) => `${name} ${uses} call${uses === 1 ? '' : 's'}`).join('\n')
+        : 'No tools used';
 
-    // Paths section
-    const paths = (data.result.finishParams as any)?.paths || [];
-    console.log('╭─ Paths ' + '─'.repeat(70) + '╮');
-    if (paths.length > 0) {
-      paths.forEach((path: string) => {
-        const displayPath = path.length > 75 ? '...' + path.slice(-72) : path;
-        console.log(`│  ${displayPath.padEnd(75)}│`);
-      });
-    } else {
-      console.log('│  No output paths' + ' '.repeat(60) + '│');
-    }
-    console.log('╰' + '─'.repeat(78) + '╯');
+    console.log(
+      boxen(toolContent, {
+        padding: { top: 0, bottom: 0, left: 1, right: 1 },
+        borderStyle: 'round',
+        borderColor: 'gray',
+        title: 'Tool Usage',
+        titleAlignment: 'left',
+        width: termWidth,
+      })
+    );
+
+    // Paths section - normalize with outputDir if available
+    const rawPaths = (data.result.finishParams as any)?.paths || [];
+    const outputDir = data.outputDir;
+    const paths = rawPaths.map((p: string) => {
+      // If outputDir is set and path doesn't already start with it, prepend it
+      if (outputDir && !p.startsWith(outputDir) && !p.startsWith('/')) {
+        return `${outputDir}/${p}`;
+      }
+      return p;
+    });
+    const pathContent =
+      paths.length > 0
+        ? paths
+            .map((path: string) => (path.length > termWidth - 6 ? '...' + path.slice(-(termWidth - 9)) : path))
+            .join('\n')
+        : 'No output paths';
+
+    console.log(
+      boxen(pathContent, {
+        padding: { top: 0, bottom: 0, left: 1, right: 1 },
+        borderStyle: 'round',
+        borderColor: 'gray',
+        title: 'Paths',
+        titleAlignment: 'left',
+        width: termWidth,
+      })
+    );
 
     // Token Usage section
     const tokenUsage = data.result.runMetadata.token_usage as any;
-    console.log('╭─ Token Usage ' + '─'.repeat(64) + '╮');
-    if (tokenUsage) {
-      const inputStr = tokenUsage.input.toLocaleString().padStart(10);
-      const outputStr = tokenUsage.output.toLocaleString().padStart(10);
-      const totalStr = tokenUsage.total.toLocaleString().padStart(10);
-      console.log(`│  Input  ${inputStr}${' '.repeat(56)}│`);
-      console.log(`│  Output ${outputStr}${' '.repeat(56)}│`);
-      console.log(`│  Total  ${totalStr}${' '.repeat(56)}│`);
-    } else {
-      console.log('│  No token usage data' + ' '.repeat(56) + '│');
-    }
-    console.log('╰' + '─'.repeat(78) + '╯');
+    const tokenContent = tokenUsage
+      ? `Input   ${tokenUsage.input.toLocaleString().padStart(10)}\nOutput  ${tokenUsage.output.toLocaleString().padStart(10)}\nTotal   ${tokenUsage.total.toLocaleString().padStart(10)}`
+      : 'No token usage data';
+
+    console.log(
+      boxen(tokenContent, {
+        padding: { top: 0, bottom: 0, left: 1, right: 1 },
+        borderStyle: 'round',
+        borderColor: 'gray',
+        title: 'Token Usage',
+        titleAlignment: 'left',
+        width: termWidth,
+      })
+    );
 
     console.log();
   };
@@ -204,7 +306,7 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
   agent.on('run:start', onRunStart);
   agent.on('turn:start', onTurnStart);
   agent.on('message:assistant', onMessageAssistant);
-  agent.on('tool:start', onToolStart);
+  agent.on('tool:complete', onToolComplete);
   agent.on('turn:complete', onTurnComplete);
   agent.on('tool:error', onToolError);
   agent.on('summarization:start', onSummarizationStart);
@@ -217,7 +319,7 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
     agent.off('run:start', onRunStart);
     agent.off('turn:start', onTurnStart);
     agent.off('message:assistant', onMessageAssistant);
-    agent.off('tool:start', onToolStart);
+    agent.off('tool:complete', onToolComplete);
     agent.off('turn:complete', onTurnComplete);
     agent.off('tool:error', onToolError);
     agent.off('summarization:start', onSummarizationStart);

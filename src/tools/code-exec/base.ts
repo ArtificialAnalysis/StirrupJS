@@ -296,11 +296,11 @@ export abstract class CodeExecToolProvider implements ToolProvider {
     output += `  <exit_code>${result.exitCode}</exit_code>\n`;
 
     if (result.stdout) {
-      output += `  <stdout><![CDATA[\n${this.truncate(result.stdout, 10000)}\n]]></stdout>\n`;
+      output += `  <stdout>${this.truncate(result.stdout, 10000)}</stdout>\n`;
     }
 
     if (result.stderr) {
-      output += `  <stderr><![CDATA[\n${this.truncate(result.stderr, 10000)}\n]]></stderr>\n`;
+      output += `  <stderr>${this.truncate(result.stderr, 10000)}</stderr>\n`;
     }
 
     if (result.errorKind) {

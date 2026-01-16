@@ -10,7 +10,14 @@
  */
 
 import { ChatCompletionsClient } from '../src/clients/openai-client.js';
-import { Agent, CALCULATOR_TOOL, DEFAULT_TOOLS, SIMPLE_FINISH_TOOL, type AgentRunResult, type FinishParams } from '../src/index.js';
+import {
+  Agent,
+  CALCULATOR_TOOL,
+  DEFAULT_TOOLS,
+  SIMPLE_FINISH_TOOL,
+  type AgentRunResult,
+  type FinishParams,
+} from '../src/index.js';
 import { getApiConfig, loadEnv } from './_helpers.js';
 
 // Load environment variables from .env file
@@ -45,7 +52,9 @@ async function main() {
   });
 
   // 4. Run the agent with a task
-  const result: AgentRunResult<FinishParams> = await session.run('What is 2 + 2? Calculate it using the calculator tool and then finish.');
+  const result: AgentRunResult<FinishParams> = await session.run(
+    'What is 2 + 2? Calculate it using the calculator tool and then finish.'
+  );
   console.log(result);
 }
 

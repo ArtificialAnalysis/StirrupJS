@@ -77,27 +77,14 @@ export class E2BCodeExecToolProvider extends CodeExecToolProvider {
     }
 
     try {
-      // Execute command
-      const execution = await this.sandbox.runCode(cmd, {
-        onStdout: () => {}, // We collect output from result
-        onStderr: () => {},
-      });
-
-      // Check for errors
-      if (execution.error) {
-        const errorMessage = (execution.error as any).message || String(execution.error);
-        return {
-          exitCode: 1,
-          stdout: '',
-          stderr: errorMessage,
-          errorKind: 'execution_error',
-        };
-      }
+      // Execute shell command
+      const result = await this.sandbox.commands.run(cmd);
 
       return {
-        exitCode: 0,
-        stdout: execution.logs.stdout.join('\n'),
-        stderr: execution.logs.stderr.join('\n'),
+        exitCode: result.exitCode,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        errorKind: result.exitCode !== 0 ? 'execution_error' : undefined,
       };
     } catch (error: any) {
       // Handle timeout
@@ -108,17 +95,6 @@ export class E2BCodeExecToolProvider extends CodeExecToolProvider {
           stderr: 'Command timed out',
           errorKind: 'timeout',
           advice: `Command exceeded ${this.timeout}ms timeout`,
-        };
-      }
-
-      // Handle invalid arguments (NUL bytes, etc.)
-      if (error.message?.includes('invalid')) {
-        return {
-          exitCode: -1,
-          stdout: '',
-          stderr: error.message,
-          errorKind: 'invalid_argument',
-          advice: 'Check command for invalid characters (NUL bytes, control characters)',
         };
       }
 
@@ -137,7 +113,8 @@ export class E2BCodeExecToolProvider extends CodeExecToolProvider {
     }
 
     try {
-      const content = await this.sandbox.files.read(path);
+      // Read as bytes for binary file support
+      const content = await this.sandbox.files.read(path, { format: 'bytes' });
       return Buffer.from(content);
     } catch (error) {
       throw new Error(`Failed to read file ${path}: ${error}`);

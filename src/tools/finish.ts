@@ -48,7 +48,8 @@ export type FinishParams = z.infer<typeof FinishParamsSchema>;
  */
 export const SIMPLE_FINISH_TOOL: Tool<typeof FinishParamsSchema, ToolUseCountMetadata> = {
   name: 'finish',
-  description: 'Signal that the task is complete and provide a summary',
+  description:
+    'Signal that the task is complete. You MUST include any files you created or modified in the paths parameter.',
   parameters: FinishParamsSchema,
   executor: async (params): Promise<ToolResult<ToolUseCountMetadata>> => {
     return {

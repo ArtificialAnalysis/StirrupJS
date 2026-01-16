@@ -10,7 +10,15 @@
 
 import { z } from 'zod';
 import { ChatCompletionsClient } from '../src/clients/openai-client.js';
-import { Agent, SIMPLE_FINISH_TOOL, ToolUseCountMetadata, type AgentRunResult, type FinishParams, type Tool, type ToolResult } from '../src/index.js';
+import {
+  Agent,
+  SIMPLE_FINISH_TOOL,
+  ToolUseCountMetadata,
+  type AgentRunResult,
+  type FinishParams,
+  type Tool,
+  type ToolResult,
+} from '../src/index.js';
 import { getApiConfig, loadEnv } from './_helpers.js';
 
 // Load environment variables
@@ -51,9 +59,6 @@ const databaseTool: Tool<typeof DbQueryParamsSchema, ToolUseCountMetadata> = {
   description: 'Execute a SQL query against the database',
   parameters: DbQueryParamsSchema,
   executor: async (params) => {
-    // Simulate database query
-    console.log(`Executing query: ${params.query}`);
-
     // Mock results
     const results = [
       { id: 1, name: 'Alice', age: 30 },
