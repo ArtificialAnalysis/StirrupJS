@@ -85,7 +85,14 @@ export class E2BCodeExecToolProvider extends CodeExecToolProvider {
 
       // Check for errors
       if (execution.error) {
-        const errorMessage = (execution.error as any).message || String(execution.error);
+        const err = execution.error as any;
+        // Build comprehensive error message with name, value, and traceback
+        const parts: string[] = [];
+        if (err.name) parts.push(err.name);
+        if (err.value) parts.push(err.value);
+        if (err.message && err.message !== err.value) parts.push(err.message);
+        if (err.traceback) parts.push(err.traceback);
+        const errorMessage = parts.length > 0 ? parts.join(': ') : JSON.stringify(err);
         return {
           exitCode: 1,
           stdout: '',

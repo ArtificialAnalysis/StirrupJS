@@ -3,6 +3,9 @@
  * Provides beautiful, readable logging for agent runs
  */
 const MAX_MESSAGE_LENGTH = 10_000;
+const getTerminalWidth = () => process.stdout.columns || 80;
+import boxen from 'boxen';
+import chalk from 'chalk';
 import pino from 'pino';
 import type { Agent, AgentEvents } from '../../core/agent.js';
 
@@ -29,6 +32,8 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
     startTime?: number;
     agentName?: string;
     depth?: number;
+    currentTurn?: number;
+    maxTurns?: number;
   } = {};
 
   // Start handler
@@ -56,67 +61,101 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
 
   // Turn start handler
   const onTurnStart: AgentEvents<FP>['turn:start'] = (data) => {
-    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
-    console.log(`${prefix}📍 Turn ${data.turn + 1}/${data.maxTurns}`);
+    runData.currentTurn = data.turn + 1;
+    runData.maxTurns = data.maxTurns;
   };
 
   // Assistant message handler
   const onMessageAssistant: AgentEvents<FP>['message:assistant'] = (data) => {
-    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+    const indent = runData.depth && runData.depth > 0 ? '  '.repeat(runData.depth) : '';
 
-    // Show assistant message if verbose
-    if (level === 'trace' || level === 'debug') {
-      if (data.content && data.content.length > 0) {
-        const truncated =
-          data.content.length > MAX_MESSAGE_LENGTH
-            ? data.content.substring(0, MAX_MESSAGE_LENGTH) + '...'
-            : data.content;
-        console.log(`${prefix}  💬 ${truncated}`);
+    // Build content for the box
+    const contentParts: string[] = [];
+
+    // Add message content
+    if (data.content && data.content.length > 0) {
+      const truncated =
+        data.content.length > MAX_MESSAGE_LENGTH ? data.content.substring(0, MAX_MESSAGE_LENGTH) + '...' : data.content;
+      contentParts.push(truncated);
+    }
+
+    // Add tool calls section
+    if (data.toolCalls && data.toolCalls.length > 0) {
+      if (contentParts.length > 0) contentParts.push('');
+      contentParts.push(chalk.gray('Tool Calls:'));
+      for (const tc of data.toolCalls) {
+        contentParts.push(`  🔧 ${chalk.yellow(tc.name)}`);
+        // Format arguments nicely
+        try {
+          const args = JSON.parse(tc.arguments) as Record<string, unknown>;
+          for (const [key, value] of Object.entries(args)) {
+            const strValue = typeof value === 'string' ? value : JSON.stringify(value);
+            const truncated = strValue.length > 100 ? strValue.substring(0, 100) + '...' : strValue;
+            const displayValue = truncated.replace(/\n/g, '\\n');
+            contentParts.push(chalk.gray(`     ${key}=${displayValue}`));
+          }
+        } catch {
+          contentParts.push(chalk.gray(`     ${tc.arguments}`));
+        }
       }
     }
 
-    // Show tool calls (more important)
-    if (data.toolCalls && data.toolCalls.length > 0) {
-      const toolNames = data.toolCalls.map((tc) => tc.name).join(', ');
-      console.log(`${prefix}  🔧 Calling: ${toolNames}`);
+    // Only show box if there's content
+    if (contentParts.length > 0) {
+      const title = `AssistantMessage │ ${runData.agentName} │ Turn ${runData.currentTurn || '?'}/${runData.maxTurns || '?'}`;
+      const termWidth = getTerminalWidth();
+      const boxWidth = indent ? termWidth - indent.length : termWidth;
+      const box = boxen(contentParts.join('\n'), {
+        padding: { top: 0, bottom: 0, left: 1, right: 1 },
+        borderStyle: 'round',
+        borderColor: 'cyan',
+        title,
+        titleAlignment: 'left',
+        width: boxWidth,
+      });
+      // Add indent for sub-agents
+      if (indent) {
+        console.log(box.split('\n').map((line) => indent + line).join('\n'));
+      } else {
+        console.log(box);
+      }
     }
-  };
-
-  // Tool start handler
-  const onToolStart: AgentEvents<FP>['tool:start'] = (data) => {
-    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
-    let argsStr = '';
-    if (level === 'debug' || level === 'trace') {
-      // Format arguments nicely - truncate long values
-      const args = data.arguments as Record<string, unknown>;
-      const formattedArgs = Object.entries(args)
-        .map(([key, value]) => {
-          const strValue = typeof value === 'string' ? value : JSON.stringify(value);
-          const truncated = strValue.length > 100 ? strValue.substring(0, 100) + '...' : strValue;
-          // Replace newlines with spaces for compact display
-          return `${key}=${truncated.replace(/\n/g, '\\n')}`;
-        })
-        .join(', ');
-      argsStr = formattedArgs ? ` (${formattedArgs})` : '';
-    }
-    console.log(`${prefix}     └─ ${data.name}${argsStr}`);
   };
 
   // Tool complete handler
   const onToolComplete: AgentEvents<FP>['tool:complete'] = (data) => {
-    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+    const indent = runData.depth && runData.depth > 0 ? '  '.repeat(runData.depth) : '';
+
+    // Truncate result if too long
     let truncatedResult: string;
     if (data.result.length > 1000) {
       truncatedResult = data.result.substring(0, 500) + '\n...\n' + data.result.substring(data.result.length - 500);
     } else {
       truncatedResult = data.result;
     }
-    // Indent multi-line results for readability
-    const indentedResult = truncatedResult
-      .split('\n')
-      .map((line, i) => (i === 0 ? line : `${prefix}        ${line}`))
-      .join('\n');
-    console.log(`${prefix}     🔧 ${data.name}: ${indentedResult}`);
+
+    const statusIcon = data.success ? chalk.green('✓') : chalk.red('✗');
+    const turnInfo = runData.currentTurn ? ` │ Turn ${runData.currentTurn}/${runData.maxTurns}` : '';
+    const title = `${statusIcon} ToolResult │ ${data.name}${turnInfo}`;
+    const borderColor = data.success ? 'green' : 'red';
+
+    const termWidth = getTerminalWidth();
+    const boxWidth = indent ? termWidth - indent.length : termWidth;
+    const box = boxen(truncatedResult, {
+      padding: { top: 0, bottom: 0, left: 1, right: 1 },
+      borderStyle: 'round',
+      borderColor,
+      title,
+      titleAlignment: 'left',
+      width: boxWidth,
+    });
+
+    // Add indent for sub-agents
+    if (indent) {
+      console.log(box.split('\n').map((line) => indent + line).join('\n'));
+    } else {
+      console.log(box);
+    }
   };
 
   // Turn complete handler
@@ -234,7 +273,6 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
   agent.on('run:start', onRunStart);
   agent.on('turn:start', onTurnStart);
   agent.on('message:assistant', onMessageAssistant);
-  agent.on('tool:start', onToolStart);
   agent.on('tool:complete', onToolComplete);
   agent.on('turn:complete', onTurnComplete);
   agent.on('tool:error', onToolError);
@@ -248,7 +286,6 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
     agent.off('run:start', onRunStart);
     agent.off('turn:start', onTurnStart);
     agent.off('message:assistant', onMessageAssistant);
-    agent.off('tool:start', onToolStart);
     agent.off('tool:complete', onToolComplete);
     agent.off('turn:complete', onTurnComplete);
     agent.off('tool:error', onToolError);
