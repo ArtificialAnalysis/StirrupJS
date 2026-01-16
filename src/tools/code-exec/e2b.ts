@@ -77,34 +77,14 @@ export class E2BCodeExecToolProvider extends CodeExecToolProvider {
     }
 
     try {
-      // Execute command
-      const execution = await this.sandbox.runCode(cmd, {
-        onStdout: () => {}, // We collect output from result
-        onStderr: () => {},
-      });
-
-      // Check for errors
-      if (execution.error) {
-        const err = execution.error as any;
-        // Build comprehensive error message with name, value, and traceback
-        const parts: string[] = [];
-        if (err.name) parts.push(err.name);
-        if (err.value) parts.push(err.value);
-        if (err.message && err.message !== err.value) parts.push(err.message);
-        if (err.traceback) parts.push(err.traceback);
-        const errorMessage = parts.length > 0 ? parts.join(': ') : JSON.stringify(err);
-        return {
-          exitCode: 1,
-          stdout: '',
-          stderr: errorMessage,
-          errorKind: 'execution_error',
-        };
-      }
+      // Execute shell command
+      const result = await this.sandbox.commands.run(cmd);
 
       return {
-        exitCode: 0,
-        stdout: execution.logs.stdout.join('\n'),
-        stderr: execution.logs.stderr.join('\n'),
+        exitCode: result.exitCode,
+        stdout: result.stdout,
+        stderr: result.stderr,
+        errorKind: result.exitCode !== 0 ? 'execution_error' : undefined,
       };
     } catch (error: any) {
       // Handle timeout
@@ -115,17 +95,6 @@ export class E2BCodeExecToolProvider extends CodeExecToolProvider {
           stderr: 'Command timed out',
           errorKind: 'timeout',
           advice: `Command exceeded ${this.timeout}ms timeout`,
-        };
-      }
-
-      // Handle invalid arguments (NUL bytes, etc.)
-      if (error.message?.includes('invalid')) {
-        return {
-          exitCode: -1,
-          stdout: '',
-          stderr: error.message,
-          errorKind: 'invalid_argument',
-          advice: 'Check command for invalid characters (NUL bytes, control characters)',
         };
       }
 
