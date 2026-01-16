@@ -1,3 +1,11 @@
+/**
+ * E2B Example
+ * Demonstrates how to use the E2BCodeExecToolProvider to execute code in a sandboxed environment
+ *
+ * To run this example:
+ *   1. Create a .env file with: E2B_API_KEY=your-key-here
+ *   2. Run: npx tsx examples/e2b-example.ts
+ */
 import 'dotenv/config';
 import { Agent, E2BCodeExecToolProvider, SIMPLE_FINISH_TOOL } from '../src/index.js';
 import { ChatCompletionsClient } from '../src/clients/openai-client.js';
