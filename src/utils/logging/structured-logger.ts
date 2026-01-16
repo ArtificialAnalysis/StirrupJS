@@ -90,7 +90,7 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
           const args = JSON.parse(tc.arguments) as Record<string, unknown>;
           for (const [key, value] of Object.entries(args)) {
             const strValue = typeof value === 'string' ? value : JSON.stringify(value);
-            const truncated = strValue.length > 100 ? strValue.substring(0, 100) + '...' : strValue;
+            const truncated = strValue.length > 1000 ? strValue.substring(0, 1000) + '...' : strValue;
             const displayValue = truncated.replace(/\n/g, '\\n');
             contentParts.push(chalk.gray(`     ${key}=${displayValue}`));
           }

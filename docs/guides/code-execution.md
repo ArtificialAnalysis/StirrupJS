@@ -215,6 +215,10 @@ See [E2B templates](https://e2b.dev/docs/templates) for details.
 - Costs money (has free tier)
 - Slightly higher latency than local
 
+### Full Example
+
+See [examples/e2b-example.ts](https://github.com/artificial-analysis/StirrupJS/blob/main/examples/e2b-example.ts) for a complete working example using E2B with the code interpreter template.
+
 ## Choosing a Backend
 
 | Backend | Best For | Pros | Cons |

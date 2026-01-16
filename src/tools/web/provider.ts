@@ -4,8 +4,7 @@
 
 import axios, { type AxiosInstance } from 'axios';
 import retry from 'async-retry';
-import { JSDOM } from 'jsdom';
-import { Readability } from '@mozilla/readability';
+import * as cheerio from 'cheerio';
 import TurndownService from 'turndown';
 import { z } from 'zod';
 import type { Tool, BaseTool, ToolProvider, ToolResult } from '../../core/models.js';
@@ -182,20 +181,31 @@ export class WebToolProvider implements ToolProvider {
 
     const html = response.data as string;
 
-    // Parse with JSDOM
-    const dom = new JSDOM(html, { url });
-    const document = dom.window.document;
+    // Parse with cheerio
+    const $ = cheerio.load(html);
 
-    // Extract readable content with Readability
-    const reader = new Readability(document, {
-      charThreshold: 500,
-    });
+    // Remove non-content elements
+    $('script, style, nav, footer, header, aside, noscript, iframe, svg, form').remove();
+    $('[role="navigation"], [role="banner"], [role="contentinfo"], [aria-hidden="true"]').remove();
+    $('.nav, .navbar, .menu, .sidebar, .footer, .header, .ads, .advertisement, .social-share').remove();
 
-    const article = reader.parse();
+    // Try to find the main content area
+    let contentHtml: string;
+    const mainContent = $('article, main, [role="main"], .content, .post, .article, #content, #main').first();
 
-    if (!article || !article.content) {
+    if (mainContent.length > 0) {
+      contentHtml = mainContent.html() || '';
+    } else {
+      // Fall back to body content
+      contentHtml = $('body').html() || '';
+    }
+
+    if (!contentHtml.trim()) {
       throw new Error('Failed to extract article content');
     }
+
+    // Extract title
+    const title = $('title').text().trim() || $('h1').first().text().trim();
 
     // Convert to Markdown with Turndown
     const turndown = new TurndownService({
@@ -204,11 +214,11 @@ export class WebToolProvider implements ToolProvider {
       bulletListMarker: '-',
     });
 
-    let markdown = turndown.turndown(article.content);
+    let markdown = turndown.turndown(contentHtml);
 
     // Add title if available
-    if (article.title) {
-      markdown = `# ${article.title}\n\n${markdown}`;
+    if (title) {
+      markdown = `# ${title}\n\n${markdown}`;
     }
 
     // Truncate if too long

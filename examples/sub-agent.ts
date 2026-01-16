@@ -10,7 +10,7 @@
  */
 
 import { ChatCompletionsClient } from '../src/clients/openai-client.js';
-import { Agent, CALCULATOR_TOOL, SIMPLE_FINISH_TOOL, type AgentRunResult, type FinishParams } from '../src/index.js';
+import { Agent, CALCULATOR_TOOL, E2BCodeExecToolProvider, SIMPLE_FINISH_TOOL, type AgentRunResult, type FinishParams } from '../src/index.js';
 import { WebToolProvider } from '../src/tools/web/provider.js';
 import { getApiConfig, loadEnv } from './_helpers.js';
 
@@ -26,6 +26,8 @@ async function main() {
     baseURL,
     maxTokens: 100_000,
   });
+
+  const codeExec = new E2BCodeExecToolProvider({ apiKey: process.env.E2B_API_KEY!, template: 'code-interpreter-v1' });
 
   // Create specialized sub-agents
 
@@ -58,6 +60,7 @@ async function main() {
       // Convert sub-agents to tools
       researchAgent.toTool('Delegate research tasks to the research specialist'),
       mathAgent.toTool('Delegate math calculations to the math specialist'),
+      codeExec
     ],
     finishTool: SIMPLE_FINISH_TOOL,
     systemPrompt: `You are a task coordinator. Delegate tasks to specialized sub-agents:

@@ -51,9 +51,6 @@ const databaseTool: Tool<typeof DbQueryParamsSchema, ToolUseCountMetadata> = {
   description: 'Execute a SQL query against the database',
   parameters: DbQueryParamsSchema,
   executor: async (params) => {
-    // Simulate database query
-    console.log(`Executing query: ${params.query}`);
-
     // Mock results
     const results = [
       { id: 1, name: 'Alice', age: 30 },
