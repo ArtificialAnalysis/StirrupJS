@@ -115,7 +115,12 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
       });
       // Add indent for sub-agents
       if (indent) {
-        console.log(box.split('\n').map((line) => indent + line).join('\n'));
+        console.log(
+          box
+            .split('\n')
+            .map((line) => indent + line)
+            .join('\n')
+        );
       } else {
         console.log(box);
       }
@@ -152,7 +157,12 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
 
     // Add indent for sub-agents
     if (indent) {
-      console.log(box.split('\n').map((line) => indent + line).join('\n'));
+      console.log(
+        box
+          .split('\n')
+          .map((line) => indent + line)
+          .join('\n')
+      );
     } else {
       console.log(box);
     }
@@ -247,7 +257,9 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
     });
     const pathContent =
       paths.length > 0
-        ? paths.map((path: string) => (path.length > termWidth - 6 ? '...' + path.slice(-(termWidth - 9)) : path)).join('\n')
+        ? paths
+            .map((path: string) => (path.length > termWidth - 6 ? '...' + path.slice(-(termWidth - 9)) : path))
+            .join('\n')
         : 'No output paths';
 
     console.log(

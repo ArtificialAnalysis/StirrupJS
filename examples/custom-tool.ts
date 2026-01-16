@@ -10,7 +10,15 @@
 
 import { z } from 'zod';
 import { ChatCompletionsClient } from '../src/clients/openai-client.js';
-import { Agent, SIMPLE_FINISH_TOOL, ToolUseCountMetadata, type AgentRunResult, type FinishParams, type Tool, type ToolResult } from '../src/index.js';
+import {
+  Agent,
+  SIMPLE_FINISH_TOOL,
+  ToolUseCountMetadata,
+  type AgentRunResult,
+  type FinishParams,
+  type Tool,
+  type ToolResult,
+} from '../src/index.js';
 import { getApiConfig, loadEnv } from './_helpers.js';
 
 // Load environment variables

@@ -91,8 +91,9 @@ async function example1_BasicEvents() {
   // Run the agent with session
   // Note: We disable the default logger here to avoid duplicate logs with our custom event listeners
   await using session = agent.session({ noLogger: true });
-  const result: AgentRunResult<FinishParams> = await session.run('What is 2+2? When you know the answer, call the finish tool.');
-
+  const result: AgentRunResult<FinishParams> = await session.run(
+    'What is 2+2? When you know the answer, call the finish tool.'
+  );
 }
 
 // ============================================================================
@@ -135,9 +136,7 @@ async function example2_Streaming() {
       case 'message':
         if (event.message.role === 'assistant') {
           const content =
-            typeof event.message.content === 'string'
-              ? event.message.content
-              : JSON.stringify(event.message.content);
+            typeof event.message.content === 'string' ? event.message.content : JSON.stringify(event.message.content);
           console.log('💬 Assistant:', content.substring(0, 80));
         } else if (event.message.role === 'tool') {
           console.log('🔧 Tool result received');

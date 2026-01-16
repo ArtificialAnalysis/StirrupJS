@@ -26,7 +26,6 @@ async function main() {
     'Generate the first 50 numbers of the Fibonacci sequence and create ' +
       'a line chart showing the growth. Save the chart as fibonacci.png'
   );
-
 }
 
 main().catch(console.error);

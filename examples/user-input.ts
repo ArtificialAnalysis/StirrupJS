@@ -58,5 +58,3 @@ What is the population of the user's home country over the last 3 years?
 }
 
 main().catch(console.error);
-
-
