@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { Agent, E2BCodeExecToolProvider } from '../src/index.js';
+import { Agent, E2BCodeExecToolProvider, SIMPLE_FINISH_TOOL } from '../src/index.js';
 import { ChatCompletionsClient } from '../src/clients/openai-client.js';
 
 async function main() {
@@ -17,6 +17,7 @@ async function main() {
     name: 'agent',
     maxTurns: 15,
     tools: [codeExec],
+    finishTool: SIMPLE_FINISH_TOOL,
   });
 
   await using session = agent.session({ outputDir: './output' });
@@ -26,7 +27,6 @@ async function main() {
       'a line chart showing the growth. Save the chart as fibonacci.png'
   );
 
-  console.log('Result:', result.finishParams);
 }
 
 main().catch(console.error);

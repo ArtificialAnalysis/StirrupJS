@@ -200,16 +200,18 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
       return;
     }
 
+    const termWidth = getTerminalWidth();
+
     // For main agent, show full summary
-    console.log('═'.repeat(80));
+    console.log('═'.repeat(termWidth));
     console.log('✅ Agent Complete');
-    console.log('═'.repeat(80));
+    console.log('═'.repeat(termWidth));
 
     if (data.result.finishParams) {
       console.log('\n📝 Result:', (data.result.finishParams as any).reason || JSON.stringify(data.result.finishParams));
     }
 
-    console.log('\n' + '─'.repeat(80));
+    console.log('\n' + '─'.repeat(termWidth));
 
     // Tool Usage section
     const tools = Object.entries(data.result.runMetadata)
@@ -217,45 +219,56 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
       .map(([name, toolData]: [string, any]) => ({ name, uses: toolData.numUses || 0 }))
       .filter((t) => t.uses > 0);
 
-    console.log('╭─ Tool Usage ' + '─'.repeat(65) + '╮');
-    if (tools.length > 0) {
-      tools.forEach(({ name, uses }) => {
-        const callsText = `${uses} call${uses === 1 ? '' : 's'}`;
-        const padding = 80 - 3 - name.length - 1 - callsText.length - 1;
-        console.log(`│  ${name} ${callsText}${' '.repeat(Math.max(0, padding))}│`);
-      });
-    } else {
-      console.log('│  No tools used' + ' '.repeat(63) + '│');
-    }
-    console.log('╰' + '─'.repeat(78) + '╯');
+    const toolContent =
+      tools.length > 0
+        ? tools.map(({ name, uses }) => `${name} ${uses} call${uses === 1 ? '' : 's'}`).join('\n')
+        : 'No tools used';
+
+    console.log(
+      boxen(toolContent, {
+        padding: { top: 0, bottom: 0, left: 1, right: 1 },
+        borderStyle: 'round',
+        borderColor: 'gray',
+        title: 'Tool Usage',
+        titleAlignment: 'left',
+        width: termWidth,
+      })
+    );
 
     // Paths section
     const paths = (data.result.finishParams as any)?.paths || [];
-    console.log('╭─ Paths ' + '─'.repeat(70) + '╮');
-    if (paths.length > 0) {
-      paths.forEach((path: string) => {
-        const displayPath = path.length > 75 ? '...' + path.slice(-72) : path;
-        console.log(`│  ${displayPath.padEnd(75)}│`);
-      });
-    } else {
-      console.log('│  No output paths' + ' '.repeat(60) + '│');
-    }
-    console.log('╰' + '─'.repeat(78) + '╯');
+    const pathContent =
+      paths.length > 0
+        ? paths.map((path: string) => (path.length > termWidth - 6 ? '...' + path.slice(-(termWidth - 9)) : path)).join('\n')
+        : 'No output paths';
+
+    console.log(
+      boxen(pathContent, {
+        padding: { top: 0, bottom: 0, left: 1, right: 1 },
+        borderStyle: 'round',
+        borderColor: 'gray',
+        title: 'Paths',
+        titleAlignment: 'left',
+        width: termWidth,
+      })
+    );
 
     // Token Usage section
     const tokenUsage = data.result.runMetadata.token_usage as any;
-    console.log('╭─ Token Usage ' + '─'.repeat(64) + '╮');
-    if (tokenUsage) {
-      const inputStr = tokenUsage.input.toLocaleString().padStart(10);
-      const outputStr = tokenUsage.output.toLocaleString().padStart(10);
-      const totalStr = tokenUsage.total.toLocaleString().padStart(10);
-      console.log(`│  Input  ${inputStr}${' '.repeat(56)}│`);
-      console.log(`│  Output ${outputStr}${' '.repeat(56)}│`);
-      console.log(`│  Total  ${totalStr}${' '.repeat(56)}│`);
-    } else {
-      console.log('│  No token usage data' + ' '.repeat(56) + '│');
-    }
-    console.log('╰' + '─'.repeat(78) + '╯');
+    const tokenContent = tokenUsage
+      ? `Input   ${tokenUsage.input.toLocaleString().padStart(10)}\nOutput  ${tokenUsage.output.toLocaleString().padStart(10)}\nTotal   ${tokenUsage.total.toLocaleString().padStart(10)}`
+      : 'No token usage data';
+
+    console.log(
+      boxen(tokenContent, {
+        padding: { top: 0, bottom: 0, left: 1, right: 1 },
+        borderStyle: 'round',
+        borderColor: 'gray',
+        title: 'Token Usage',
+        titleAlignment: 'left',
+        width: termWidth,
+      })
+    );
 
     console.log();
   };

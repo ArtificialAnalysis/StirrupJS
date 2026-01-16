@@ -113,7 +113,8 @@ export class E2BCodeExecToolProvider extends CodeExecToolProvider {
     }
 
     try {
-      const content = await this.sandbox.files.read(path);
+      // Read as bytes for binary file support
+      const content = await this.sandbox.files.read(path, { format: 'bytes' });
       return Buffer.from(content);
     } catch (error) {
       throw new Error(`Failed to read file ${path}: ${error}`);
