@@ -234,6 +234,76 @@ async function example3_Cancellation() {
 }
 
 // ============================================================================
+// Example 4: Structured Logging
+// ============================================================================
+
+async function example4_StructuredLogging() {
+  console.log('\n========================================');
+  console.log('Example 4: Structured Logging');
+  console.log('========================================\n');
+
+  const { apiKey, baseURL, model } = getApiConfig();
+  const client = new ChatCompletionsClient({
+    apiKey,
+    baseURL,
+    model,
+  });
+
+  const agent = new Agent({
+    client,
+    name: 'logging-agent',
+    maxTurns: 5,
+    finishTool: SIMPLE_FINISH_TOOL,
+  });
+
+  // The session automatically attaches the structured logger by default
+  // This provides formatted console output with boxes for messages, tool results, and summaries
+  await using session = agent.session();
+  await session.run('What is 2+2? Call finish when done.');
+}
+
+// ============================================================================
+// Example 5: Combined Events and Structured Logging
+// ============================================================================
+
+async function example5_Combined() {
+  console.log('\n========================================');
+  console.log('Example 5: Combined Events + Logging');
+  console.log('========================================\n');
+
+  const { apiKey, baseURL, model } = getApiConfig();
+  const client = new ChatCompletionsClient({
+    apiKey,
+    baseURL,
+    model,
+  });
+
+  const agent = new Agent({
+    client,
+    name: 'combined-agent',
+    maxTurns: 5,
+    tools: [new WebToolProvider()],
+    finishTool: SIMPLE_FINISH_TOOL,
+  });
+
+  // Add custom event handlers alongside the structured logger
+  // These can be used for custom metrics, alerts, or side effects
+  agent.on('tool:complete', ({ name, success }) => {
+    // Example: Send metrics to monitoring system
+    console.log(`[METRICS] Tool ${name} completed: ${success ? 'success' : 'failure'}`);
+  });
+
+  agent.on('run:complete', ({ duration }) => {
+    // Example: Log to external system
+    console.log(`[METRICS] Total run duration: ${duration}ms`);
+  });
+
+  // The structured logger runs alongside custom event handlers
+  await using session = agent.session();
+  await session.run('What is 2+2? Call finish when done.');
+}
+
+// ============================================================================
 // Main
 // ============================================================================
 
@@ -254,11 +324,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   }
 
   // Run examples - uncomment the ones you want to try:
-  await example1_BasicEvents();
+  // await example1_BasicEvents();
   // await example2_Streaming();
   // await example3_Cancellation();
   // await example4_StructuredLogging();
-  // await example5_Combined();
+  await example5_Combined();
 
   console.log('\n✨ Demo complete!');
 }
