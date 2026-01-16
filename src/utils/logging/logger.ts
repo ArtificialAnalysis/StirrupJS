@@ -1,5 +1,5 @@
 /**
- * Default agent logger with rich terminal output
+ * Default agent logger with terminal output
  */
 
 import chalk from 'chalk';
@@ -11,7 +11,7 @@ import type { AssistantMessage, UserMessage, ToolMessage } from '../../core/mode
 import { SUBAGENT_INDENT_SPACES } from '../../constants.js';
 
 /**
- * Agent logger with rich terminal output
+ * Agent logger with terminal output
  * Uses chalk for colors, cli-table3 for tables, ora for spinners, boxen for panels
  */
 export class AgentLogger implements AgentLoggerBase {

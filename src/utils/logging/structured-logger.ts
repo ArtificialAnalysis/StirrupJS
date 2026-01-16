@@ -85,8 +85,38 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
   // Tool start handler
   const onToolStart: AgentEvents<FP>['tool:start'] = (data) => {
     const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
-    const argsStr = level === 'debug' || level === 'trace' ? `: ${JSON.stringify(data.arguments)}` : '';
+    let argsStr = '';
+    if (level === 'debug' || level === 'trace') {
+      // Format arguments nicely - truncate long values
+      const args = data.arguments as Record<string, unknown>;
+      const formattedArgs = Object.entries(args)
+        .map(([key, value]) => {
+          const strValue = typeof value === 'string' ? value : JSON.stringify(value);
+          const truncated = strValue.length > 100 ? strValue.substring(0, 100) + '...' : strValue;
+          // Replace newlines with spaces for compact display
+          return `${key}=${truncated.replace(/\n/g, '\\n')}`;
+        })
+        .join(', ');
+      argsStr = formattedArgs ? ` (${formattedArgs})` : '';
+    }
     console.log(`${prefix}     └─ ${data.name}${argsStr}`);
+  };
+
+  // Tool complete handler
+  const onToolComplete: AgentEvents<FP>['tool:complete'] = (data) => {
+    const prefix = runData.depth && runData.depth > 0 ? `  ${'  '.repeat(runData.depth - 1)}   ` : '';
+    let truncatedResult: string;
+    if (data.result.length > 1000) {
+      truncatedResult = data.result.substring(0, 500) + '\n...\n' + data.result.substring(data.result.length - 500);
+    } else {
+      truncatedResult = data.result;
+    }
+    // Indent multi-line results for readability
+    const indentedResult = truncatedResult
+      .split('\n')
+      .map((line, i) => (i === 0 ? line : `${prefix}        ${line}`))
+      .join('\n');
+    console.log(`${prefix}     🔧 ${data.name}: ${indentedResult}`);
   };
 
   // Turn complete handler
@@ -205,6 +235,7 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
   agent.on('turn:start', onTurnStart);
   agent.on('message:assistant', onMessageAssistant);
   agent.on('tool:start', onToolStart);
+  agent.on('tool:complete', onToolComplete);
   agent.on('turn:complete', onTurnComplete);
   agent.on('tool:error', onToolError);
   agent.on('summarization:start', onSummarizationStart);
@@ -218,6 +249,7 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
     agent.off('turn:start', onTurnStart);
     agent.off('message:assistant', onMessageAssistant);
     agent.off('tool:start', onToolStart);
+    agent.off('tool:complete', onToolComplete);
     agent.off('turn:complete', onTurnComplete);
     agent.off('tool:error', onToolError);
     agent.off('summarization:start', onSummarizationStart);
