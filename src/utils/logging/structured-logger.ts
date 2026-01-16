@@ -235,8 +235,16 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
       })
     );
 
-    // Paths section
-    const paths = (data.result.finishParams as any)?.paths || [];
+    // Paths section - normalize with outputDir if available
+    const rawPaths = (data.result.finishParams as any)?.paths || [];
+    const outputDir = data.outputDir;
+    const paths = rawPaths.map((p: string) => {
+      // If outputDir is set and path doesn't already start with it, prepend it
+      if (outputDir && !p.startsWith(outputDir) && !p.startsWith('/')) {
+        return `${outputDir}/${p}`;
+      }
+      return p;
+    });
     const pathContent =
       paths.length > 0
         ? paths.map((path: string) => (path.length > termWidth - 6 ? '...' + path.slice(-(termWidth - 9)) : path)).join('\n')

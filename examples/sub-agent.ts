@@ -38,7 +38,7 @@ async function main() {
     maxTurns: 5,
     tools: [new WebToolProvider(180_000, process.env.BRAVE_API_KEY)],
     finishTool: SIMPLE_FINISH_TOOL,
-    systemPrompt: 'You are a research specialist. Use web search to find accurate information.',
+    systemPrompt: 'You are a research specialist. Use web search to find accurate information. Return all relevant information in the finish tool.',
   });
 
   // 2. Calculator Agent - specialized in math
@@ -48,7 +48,7 @@ async function main() {
     maxTurns: 3,
     tools: [CALCULATOR_TOOL],
     finishTool: SIMPLE_FINISH_TOOL,
-    systemPrompt: 'You are a math specialist. Calculate precisely using the calculator tool.',
+    systemPrompt: 'You are a math specialist. Calculate precisely using the calculator tool. Return all relevant information in the finish tool.',
   });
 
   // 3. Main Coordinator Agent - delegates to sub-agents
