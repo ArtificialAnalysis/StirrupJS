@@ -1,6 +1,6 @@
 {
   "name": "@stirrup/stirrup",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "The lightweight foundation for building agents in TypeScript",
   "type": "module",
   "main": "./dist/index.js",
