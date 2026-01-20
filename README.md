@@ -93,8 +93,8 @@ For using Stirrup as a foundation for your own fully customized agent, you can c
 
 ```bash
 # Clone the repository
-git clone https://github.com/ArtificialAnalysis/Stirrup.git
-cd stirrup/stirrup-js
+git clone https://github.com/ArtificialAnalysis/StirrupJS.git
+cd StirrupJS
 
 # Install dependencies
 npm install
