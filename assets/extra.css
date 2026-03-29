@@ -1,0 +1,49 @@
+/* StirrupJS MkDocs Material overrides
+ *
+ * Goal: match the Python docs' layout/typography polish while preserving JS colors.
+ * Rule: avoid hardcoded hex colors; rely on MkDocs Material CSS variables.
+ */
+
+:root {
+  /* Keep StirrupJS' existing palette (TypeScript blue). */
+  --md-primary-fg-color: #3178C6;
+  --md-accent-fg-color: #3178C6;
+}
+
+/* Header */
+.md-header {
+  background-color: var(--md-primary-fg-color);
+}
+
+/* Logo sizing - larger (matches Python docs) */
+.md-header__button.md-logo img {
+  height: 2.2rem;
+  width: auto;
+}
+
+/* Code blocks */
+.highlight {
+  border-radius: 4px;
+}
+
+/* Admonitions */
+.admonition {
+  border-radius: 4px;
+}
+
+/* Tables */
+table {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+/* Navigation */
+.md-nav__link--active {
+  font-weight: 600;
+}
+
+/* Inline code (avoid affecting fenced code blocks) */
+.md-typeset :not(pre) > code {
+  border-radius: 3px;
+  padding: 0.1em 0.25em;
+}
