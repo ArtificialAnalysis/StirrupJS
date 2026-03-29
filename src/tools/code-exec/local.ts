@@ -4,7 +4,7 @@
  */
 
 import { execa } from 'execa';
-import { mkdtemp, rm, mkdir, readFile, writeFile } from 'fs/promises';
+import { mkdtemp, rm, mkdir, readFile, writeFile, stat } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join, dirname } from 'path';
 import { CodeExecToolProvider, type CommandResult, type SaveOutputFilesResult } from './base.js';
@@ -113,6 +113,18 @@ export class LocalCodeExecToolProvider extends CodeExecToolProvider {
     await mkdir(dirname(fullPath), { recursive: true });
 
     await writeFile(fullPath, content);
+  }
+
+  async fileExists(path: string): Promise<boolean> {
+    if (!this.tempDir) return false;
+    if (path.startsWith('/') || path.includes('..')) return false;
+    const fullPath = join(this.tempDir, path);
+    try {
+      const s = await stat(fullPath);
+      return s.isFile();
+    } catch {
+      return false;
+    }
   }
 
   /**

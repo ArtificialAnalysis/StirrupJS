@@ -23,9 +23,10 @@ import type {
   ToolResult,
   UserMessage,
 } from './models.js';
-import { AgentValidationError, TokenUsageMetadata, aggregateMetadata } from './models.js';
+import { AgentValidationError, TokenUsageMetadata, aggregateMetadata, isSummaryMessage, createSummaryMessage } from './models.js';
 import { createSessionState, getParentDepth, sessionContext, type SessionState } from './session.js';
 import { SubAgentMetadata, SubAgentParamsSchema, type SubAgentParams } from './sub-agent.js';
+import { CacheManager } from './cache.js';
 
 /**
  * Typed events emitted by the Agent
@@ -33,7 +34,7 @@ import { SubAgentMetadata, SubAgentParamsSchema, type SubAgentParams } from './s
  */
 export interface AgentEvents<FP = unknown> {
   'run:start': (data: { task: string | ChatMessage[]; depth: number }) => void;
-  'run:complete': (data: { result: AgentRunResult<FP>; duration: number; outputDir?: string }) => void;
+  'run:complete': (data: { result: AgentRunResult<FP>; duration: number; outputDir?: string; speedStats?: SpeedStats }) => void;
   'run:error': (data: { error: Error; duration: number }) => void;
 
   'turn:start': (data: { turn: number; maxTurns: number }) => void;
@@ -89,6 +90,9 @@ export interface SessionConfig {
 
   /** Options for the default structured logger */
   loggerOptions?: StructuredLoggerOptions;
+
+  /** Attempt to resume from a cached run state */
+  resume?: boolean;
 }
 
 /**
@@ -116,11 +120,35 @@ export interface AgentConfig<FP extends z.ZodType, FM = unknown> {
   /** Context summarization threshold (0-1) */
   contextSummarizationCutoff?: number;
 
+  /** When true, inject a continuation prompt if assistant responds without tool calls */
+  blockSuccessiveAssistantMessages?: boolean;
+
+  /** When true, sub-agents reuse the parent's code execution environment instead of creating their own */
+  shareParentExecEnv?: boolean;
+
   /** Whether to run sync executors in thread pool */
   runSyncInThread?: boolean;
 
   /** Whether to convert tool responses to text-only */
   textOnlyToolResponses?: boolean;
+}
+
+/**
+ * Speed/performance statistics for an agent run
+ */
+export interface SpeedStats {
+  /** Total time spent on LLM generation (ms) */
+  totalGenerationMs: number;
+  /** Total output tokens generated */
+  totalOutputTokens: number;
+  /** Total time spent on tool execution (ms) */
+  totalToolMs: number;
+  /** Tool execution time breakdown by tool name (ms) */
+  toolBreakdown: Record<string, number>;
+  /** Number of LLM generation steps */
+  generationCount: number;
+  /** Model identifier */
+  modelSlug: string;
 }
 
 /**
@@ -135,6 +163,9 @@ export interface AgentRunResult<FP> {
 
   /** Aggregated metadata from all tool calls */
   runMetadata: Record<string, unknown>;
+
+  /** Speed/performance statistics */
+  speedStats?: SpeedStats;
 }
 
 /**
@@ -173,10 +204,13 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
   private tools: Array<BaseTool | ToolProvider>;
   private finishTool?: Tool<FP, FM>;
   private contextSummarizationCutoff: number;
+  private blockSuccessiveAssistantMessages: boolean;
+  private shareParentExecEnv: boolean;
   // Session state
   private sessionState?: SessionState;
   private activeTools: Map<string, BaseTool> = new Map();
   private isInitialized = false;
+  private sessionCalled = false;
   // Session configuration
   private pendingOutputDir?: string;
   private _pendingInputFiles?: string | string[]; // Unused for now, will be implemented
@@ -185,6 +219,8 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
   private lastFinishParams?: z.infer<FP>;
   // Logger cleanup function
   private loggerCleanup?: () => void;
+  // Cache resume flag
+  private pendingResume = false;
 
   constructor(config: AgentConfig<FP, FM>) {
     super(); // Initialize EventEmitter
@@ -197,6 +233,8 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
       tools = [],
       finishTool,
       contextSummarizationCutoff = CONTEXT_SUMMARIZATION_CUTOFF,
+      blockSuccessiveAssistantMessages = false,
+      shareParentExecEnv = false,
       runSyncInThread = true,
       textOnlyToolResponses = true,
     } = config;
@@ -213,6 +251,8 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
     this.tools = tools;
     this.finishTool = finishTool;
     this.contextSummarizationCutoff = contextSummarizationCutoff;
+    this.blockSuccessiveAssistantMessages = blockSuccessiveAssistantMessages;
+    this.shareParentExecEnv = shareParentExecEnv;
     // Store for future use
     void runSyncInThread;
     void textOnlyToolResponses;
@@ -234,9 +274,11 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
    * ```
    */
   session(config: SessionConfig = {}): this {
+    this.sessionCalled = true;
     this.pendingOutputDir = config.outputDir ?? './output';
     this._pendingInputFiles = config.inputFiles;
     this.pendingSkillsDir = config.skillsDir;
+    this.pendingResume = config.resume ?? false;
 
     if (!config.noLogger && !this.loggerCleanup) {
       this.loggerCleanup = createStructuredLogger(this, config.loggerOptions);
@@ -267,6 +309,18 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
     this.emit('run:start', { task: initMessages, depth });
 
     try {
+      // Enforce session initialization when ToolProviders exist
+      if (!this.isInitialized && depth === 0 && !this.sessionCalled) {
+        const hasToolProviders = this.tools.some((t) => this.isToolProvider(t));
+        if (hasToolProviders) {
+          console.warn(
+            'Warning: Agent has ToolProviders but session() was not called. ' +
+              'Auto-initializing session with defaults. Call agent.session() explicitly for proper lifecycle management.'
+          );
+          this.session();
+        }
+      }
+
       if (!this.isInitialized) {
         await this.initialize(depth);
       }
@@ -282,6 +336,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
       const messageHistory: ChatMessage[][] = [];
       let currentMessages = allMessages;
       let currentGroup: ChatMessage[] = [...currentMessages];
+      let startTurn = 0;
 
       const runMetadata: Record<string, unknown[]> = {
         token_usage: [],
@@ -291,13 +346,54 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
         runMetadata[toolName] = [];
       }
 
+      // Attempt to resume from cache
+      const cacheManager = new CacheManager(messages);
+      if (this.pendingResume) {
+        const cachedState = await cacheManager.loadState();
+        if (cachedState) {
+          currentMessages = cachedState.messages;
+          currentGroup = [...currentMessages];
+          messageHistory.push(...cachedState.messageHistory);
+          startTurn = cachedState.turn;
+          // Restore files to exec env
+          if (this.sessionState?.execEnv && cachedState.files) {
+            for (const [path, base64Content] of Object.entries(cachedState.files)) {
+              await this.sessionState.execEnv.writeFileBytes(path, Buffer.from(base64Content, 'base64'));
+            }
+          }
+          console.log(`Resuming from cached state at turn ${startTurn}`);
+        }
+      }
+
+      // Speed stats accumulator
+      const speedStats: SpeedStats = {
+        totalGenerationMs: 0,
+        totalOutputTokens: 0,
+        totalToolMs: 0,
+        toolBreakdown: {},
+        generationCount: 0,
+        modelSlug: this.client.modelSlug,
+      };
+
       let finishParams: z.infer<FP> | undefined;
-      for (let turn = 0; turn < this.maxTurns; turn++) {
+      let lastTurn = startTurn;
+      for (let turn = startTurn; turn < this.maxTurns; turn++) {
+        lastTurn = turn;
         signal?.throwIfAborted();
 
         this.emit('turn:start', { turn, maxTurns: this.maxTurns });
 
-        const { assistantMessage, toolMessages } = await this.step(currentMessages, runMetadata);
+        const { assistantMessage, toolMessages, finishSuccess, generationDurationMs, toolDurationsMs } =
+          await this.step(currentMessages, runMetadata);
+
+        // Accumulate speed stats
+        speedStats.totalGenerationMs += generationDurationMs;
+        speedStats.totalOutputTokens += assistantMessage.tokenUsage?.output ?? 0;
+        speedStats.generationCount++;
+        for (const [name, duration] of Object.entries(toolDurationsMs)) {
+          speedStats.totalToolMs += duration;
+          speedStats.toolBreakdown[name] = (speedStats.toolBreakdown[name] ?? 0) + duration;
+        }
 
         for (const toolMsg of toolMessages) {
           this.emit('message:tool', {
@@ -332,9 +428,28 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
           }
         }
 
+        // Only finish if the finish tool returned success (or didn't explicitly return false)
         if (finishParams !== undefined) {
-          messageHistory.push(currentGroup);
-          break;
+          if (finishSuccess === false) {
+            // Finish was rejected (e.g. output file validation failed), continue agent loop
+            finishParams = undefined;
+          } else {
+            messageHistory.push(currentGroup);
+            break;
+          }
+        }
+
+        // Prevent successive assistant messages by injecting a continuation prompt
+        if (
+          this.blockSuccessiveAssistantMessages &&
+          (!assistantMessage.toolCalls || assistantMessage.toolCalls.length === 0)
+        ) {
+          const continueMessage: UserMessage = {
+            role: 'user',
+            content: 'Please continue the task. If the task is complete, call the finish tool.',
+          };
+          currentMessages = [...currentMessages, continueMessage];
+          currentGroup.push(continueMessage);
         }
 
         if (assistantMessage.tokenUsage) {
@@ -365,18 +480,38 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
         messageHistory.push(currentGroup);
       }
 
+      // Cache state if task did not complete (for potential resume)
+      if (finishParams === undefined) {
+        try {
+          await cacheManager.saveState({
+            messages: currentMessages,
+            messageHistory,
+            runMetadata,
+            turn: lastTurn,
+            timestamp: Date.now(),
+            files: {},
+          });
+        } catch {
+          /* ignore cache save errors */
+        }
+      } else {
+        // Clear cache on successful completion
+        await cacheManager.clearState();
+      }
+
       const aggregated = aggregateMetadata(runMetadata);
 
       const result: AgentRunResult<z.infer<FP>> = {
         finishParams,
         messageHistory,
         runMetadata: aggregated,
+        speedStats,
       };
 
       this.lastFinishParams = finishParams;
 
       const duration = Date.now() - startTime;
-      this.emit('run:complete', { result, duration, outputDir: this.sessionState?.outputDir });
+      this.emit('run:complete', { result, duration, outputDir: this.sessionState?.outputDir, speedStats });
 
       return result;
     } catch (error) {
@@ -446,7 +581,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
           timestamp: Date.now(),
         };
 
-        const { assistantMessage, toolMessages } = await this.step(currentMessages, runMetadata);
+        const { assistantMessage, toolMessages, finishSuccess } = await this.step(currentMessages, runMetadata);
 
         yield {
           type: 'message',
@@ -502,9 +637,27 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
           }
         }
 
+        // Only finish if the finish tool returned success (or didn't explicitly return false)
         if (finishParams !== undefined) {
-          messageHistory.push(currentGroup);
-          break;
+          if (finishSuccess === false) {
+            finishParams = undefined;
+          } else {
+            messageHistory.push(currentGroup);
+            break;
+          }
+        }
+
+        // Prevent successive assistant messages by injecting a continuation prompt
+        if (
+          this.blockSuccessiveAssistantMessages &&
+          (!assistantMessage.toolCalls || assistantMessage.toolCalls.length === 0)
+        ) {
+          const continueMessage: UserMessage = {
+            role: 'user',
+            content: 'Please continue the task. If the task is complete, call the finish tool.',
+          };
+          currentMessages = [...currentMessages, continueMessage];
+          currentGroup.push(continueMessage);
         }
 
         if (assistantMessage.tokenUsage) {
@@ -560,8 +713,16 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
   private async step(
     messages: ChatMessage[],
     runMetadata: Record<string, unknown[]>
-  ): Promise<{ assistantMessage: AssistantMessage; toolMessages: ToolMessage[] }> {
+  ): Promise<{
+    assistantMessage: AssistantMessage;
+    toolMessages: ToolMessage[];
+    finishSuccess?: boolean;
+    generationDurationMs: number;
+    toolDurationsMs: Record<string, number>;
+  }> {
+    const genStart = Date.now();
     const assistantMessage = await this.client.generate(messages, this.activeTools);
+    const generationDurationMs = Date.now() - genStart;
 
     if (assistantMessage.tokenUsage) {
       runMetadata['token_usage']?.push(TokenUsageMetadata.fromTokenUsage(assistantMessage.tokenUsage));
@@ -579,29 +740,42 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
     }
 
     const toolMessages: ToolMessage[] = [];
+    const toolDurationsMs: Record<string, number> = {};
+    let finishSuccess: boolean | undefined;
     if (assistantMessage.toolCalls) {
       for (const toolCall of assistantMessage.toolCalls) {
-        const toolMessage = await this.runTool(toolCall, runMetadata);
+        const toolStart = Date.now();
+        const { message: toolMessage, success: toolSuccess } = await this.runTool(toolCall, runMetadata);
+        toolDurationsMs[toolCall.name] = (toolDurationsMs[toolCall.name] ?? 0) + (Date.now() - toolStart);
         toolMessages.push(toolMessage);
+        // Track finish tool success status
+        if (toolCall.name === FINISH_TOOL_NAME && toolSuccess !== undefined) {
+          finishSuccess = toolSuccess;
+        }
       }
     }
 
-    return { assistantMessage, toolMessages };
+    return { assistantMessage, toolMessages, finishSuccess, generationDurationMs, toolDurationsMs };
   }
 
   /**
    * Execute a single tool call
    */
-  private async runTool(toolCall: ToolCall, runMetadata: Record<string, unknown[]>): Promise<ToolMessage> {
+  private async runTool(
+    toolCall: ToolCall,
+    runMetadata: Record<string, unknown[]>
+  ): Promise<{ message: ToolMessage; success?: boolean }> {
     const tool = this.activeTools.get(toolCall.name);
 
     if (!tool) {
       return {
-        role: 'tool',
-        content: `Error: '${toolCall.name}' is not a valid tool`,
-        toolCallId: toolCall.toolCallId ?? '',
-        name: toolCall.name,
-        argsWasValid: false,
+        message: {
+          role: 'tool',
+          content: `Error: '${toolCall.name}' is not a valid tool`,
+          toolCallId: toolCall.toolCallId ?? '',
+          name: toolCall.name,
+          argsWasValid: false,
+        },
       };
     }
 
@@ -623,11 +797,13 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
         error: error instanceof Error ? error : new Error(errorMsg),
       });
       return {
-        role: 'tool',
-        content: errorMsg,
-        toolCallId: toolCall.toolCallId ?? '',
-        name: toolCall.name,
-        argsWasValid: false,
+        message: {
+          role: 'tool',
+          content: errorMsg,
+          toolCallId: toolCall.toolCallId ?? '',
+          name: toolCall.name,
+          argsWasValid: false,
+        },
       };
     }
 
@@ -650,11 +826,13 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
         error: error instanceof Error ? error : new Error(errorMessage),
       });
       return {
-        role: 'tool',
-        content: `Error executing tool: ${errorMessage}`,
-        toolCallId: toolCall.toolCallId ?? '',
-        name: toolCall.name,
-        argsWasValid: true,
+        message: {
+          role: 'tool',
+          content: `Error executing tool: ${errorMessage}`,
+          toolCallId: toolCall.toolCallId ?? '',
+          name: toolCall.name,
+          argsWasValid: true,
+        },
       };
     }
 
@@ -663,16 +841,20 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
     }
 
     return {
-      role: 'tool',
-      content: result.content,
-      toolCallId: toolCall.toolCallId ?? '',
-      name: toolCall.name,
-      argsWasValid: true,
+      message: {
+        role: 'tool',
+        content: result.content,
+        toolCallId: toolCall.toolCallId ?? '',
+        name: toolCall.name,
+        argsWasValid: true,
+      },
+      success: result.success,
     };
   }
 
   /**
-   * Summarize messages when approaching context limit
+   * Summarize messages when approaching context limit.
+   * Filters out old summary/ack pairs to prevent accumulation.
    */
   private async summarizeMessages(messages: ChatMessage[]): Promise<ChatMessage[]> {
     const taskContextEnd = messages.findIndex((m) => m.role === 'assistant');
@@ -691,7 +873,19 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
     const summaryText = typeof summary === 'string' ? summary : JSON.stringify(summary);
     const bridgeMessage = MESSAGE_SUMMARIZER_BRIDGE_TEMPLATE(summaryText);
 
-    return [...taskContext, { role: 'user', content: bridgeMessage } as UserMessage];
+    // Filter out old summary messages from task context to prevent accumulation
+    const filteredTaskContext = taskContext.filter((m) => !isSummaryMessage(m));
+
+    // Create marked summary message so it can be identified in future summarizations
+    const summaryUserMessage = createSummaryMessage(bridgeMessage);
+
+    // Add an ack assistant message to maintain proper message alternation
+    const ackMessage: AssistantMessage = {
+      role: 'assistant',
+      content: 'Understood, I will continue the task with the summarized context.',
+    };
+
+    return [...filteredTaskContext, summaryUserMessage, ackMessage];
   }
 
   /**
@@ -737,8 +931,13 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
       return;
     }
 
+    // Capture parent state before creating our own session context
+    const parentState = depth > 0 ? sessionContext.get() : undefined;
+    const parentExecEnv = parentState?.execEnv;
+
     const state = createSessionState(depth);
     state.outputDir = this.pendingOutputDir;
+    state.parentExecEnv = parentExecEnv;
     this.sessionState = state;
 
     await sessionContext.runAsync(state, async () => {
@@ -749,10 +948,23 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
         throw new Error(`Agent can only have one CodeExecToolProvider, found ${codeExecProviders.length}`);
       }
 
-      for (const tool of codeExecProviders) {
-        await this.initializeTool(tool);
-        if (this.isToolProvider(tool)) {
-          state.execEnv = tool;
+      // Share parent exec env if configured and parent has one
+      if (this.shareParentExecEnv && parentExecEnv && codeExecProviders.length > 0) {
+        state.execEnv = parentExecEnv;
+        state.execEnvOwned = false;
+
+        // Register the code exec tools from the parent's provider
+        const tools = await parentExecEnv.getTools();
+        const toolsArray = Array.isArray(tools) ? tools : [tools];
+        for (const t of toolsArray) {
+          this.activeTools.set(t.name, t);
+        }
+      } else {
+        for (const tool of codeExecProviders) {
+          await this.initializeTool(tool);
+          if (this.isToolProvider(tool)) {
+            state.execEnv = tool;
+          }
         }
       }
 
@@ -982,6 +1194,32 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
 
           if (params.inputFiles.length > 0 && subAgent.sessionState?.execEnv && parentExecEnv) {
             await subAgent.sessionState.execEnv.uploadFiles(params.inputFiles, parentExecEnv);
+          }
+
+          // Propagate skills from parent to sub-agent if sub-agent doesn't have its own
+          if (
+            parentState?.skillsMetadata?.length &&
+            subAgent.sessionState?.execEnv &&
+            parentExecEnv &&
+            !subAgent.sessionState.skillsMetadata?.length
+          ) {
+            subAgent.sessionState.skillsMetadata = parentState.skillsMetadata;
+            try {
+              const listResult = await parentExecEnv.runCommand('find skills/ -type f 2>/dev/null');
+              if (listResult.exitCode === 0 && listResult.stdout.trim()) {
+                const files = listResult.stdout.trim().split('\n');
+                for (const filePath of files) {
+                  try {
+                    const fileContent = await parentExecEnv.readFileBytes(filePath);
+                    await subAgent.sessionState.execEnv.writeFileBytes(filePath, fileContent);
+                  } catch {
+                    /* skip individual file failures */
+                  }
+                }
+              }
+            } catch {
+              /* skip if skills listing fails */
+            }
           }
 
           const result = await subAgent.run(params.task, subAgentDepth);

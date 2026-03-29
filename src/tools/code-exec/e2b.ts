@@ -133,6 +133,16 @@ export class E2BCodeExecToolProvider extends CodeExecToolProvider {
     }
   }
 
+  async fileExists(path: string): Promise<boolean> {
+    if (!this.sandbox) return false;
+    try {
+      await this.sandbox.files.read(path, { format: 'bytes' });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Get the sandbox ID (for debugging)
    */

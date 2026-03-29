@@ -28,9 +28,12 @@ Stirrup is a lightweight framework, or starting point template, for building age
 - 🧩 **Skills system:** Extend agents with modular, domain-specific instruction packages
 - 🛠️ **Flexible tool execution:** A generic `Tool` interface allows easy tool definition and extension with Zod validation
 - 👤 **Human-in-the-loop:** Includes a built-in user input tool that enables human feedback or clarification during agent execution
-- 🧠 **Context management:** Automatically summarizes conversation history when approaching context limits
-- 🔁 **Flexible provider support:** Pre-built support for OpenAI-compatible APIs, Anthropic, and Vercel AI SDK
+- 🧠 **Context management:** Automatically summarizes conversation history when approaching context limits, with deduplication to prevent summary accumulation
+- 🔁 **Flexible provider support:** Pre-built support for OpenAI-compatible APIs (Chat Completions + Responses API), Anthropic, and Vercel AI SDK
 - 🖼️ **Multimodal support:** Process images, video, and audio with automatic format conversion
+- 📊 **Speed metrics:** Track output tokens per second (OTPS), generation time, and per-tool execution durations
+- 💾 **Agent run cache:** Cache and resume interrupted agent runs from where they left off
+- ✅ **Output file validation:** Finish tool validates that reported output files actually exist before completing
 - ✅ **Type-safe:** Built from the ground up with TypeScript
 
 
@@ -143,6 +146,21 @@ const client = new AnthropicClient({
 const agent = new Agent({ client, name: 'claude_agent', ... });
 ```
 
+### OpenAI Responses API
+
+For models that support the newer Responses API (e.g., o3, o4-mini):
+
+```typescript
+import { OpenResponsesClient } from '@stirrup/stirrup/clients/openai-responses';
+
+const client = new OpenResponsesClient({
+  model: 'o3-mini',
+  reasoningEffort: 'medium',
+});
+
+const agent = new Agent({ client, name: 'responses_agent', ... });
+```
+
 ### Vercel AI SDK
 
 Stirrup integrates seamlessly with the Vercel AI SDK, giving you access to any provider supported by their ecosystem.
@@ -243,6 +261,64 @@ await using session = agent.session({
 
 // Disable default logger
 await using session = agent.session({ noLogger: true });
+```
+
+### Speed Metrics
+
+Every agent run tracks performance metrics including output tokens per second (OTPS), generation time, and per-tool durations. These are available in the run result and displayed automatically by the structured logger:
+
+```typescript
+const result = await session.run('Create a chart');
+
+console.log(result.speedStats);
+// {
+//   modelSlug: 'claude-sonnet-4-5',
+//   totalGenerationMs: 5200,
+//   totalOutputTokens: 1200,
+//   totalToolMs: 3100,
+//   generationCount: 4,
+//   toolBreakdown: { code_exec: 2800, web_fetch: 300 }
+// }
+```
+
+### Agent Run Cache
+
+When an agent run is interrupted (max turns reached, errors), the conversation state is automatically cached to `~/.cache/stirrup/`. Resume from where you left off:
+
+```typescript
+// First run - gets interrupted at max turns
+await using session = agent.session({ outputDir: './output' });
+await session.run('Complex multi-step task');
+
+// Resume from cache
+await using session2 = agent.session({ outputDir: './output', resume: true });
+await session2.run('Complex multi-step task');  // Picks up where it left off
+```
+
+### Message Alternation
+
+Some LLM providers require strict user/assistant message alternation. Enable automatic continuation prompts:
+
+```typescript
+const agent = new Agent({
+  client,
+  name: 'strict-agent',
+  blockSuccessiveAssistantMessages: true,  // Inject "Please continue" when needed
+  ...
+});
+```
+
+### Shared Execution Environment
+
+Sub-agents can share the parent's code execution sandbox to avoid file transfer overhead:
+
+```typescript
+const subAgent = new Agent({
+  client,
+  name: 'worker',
+  shareParentExecEnv: true,  // Reuse parent's sandbox
+  ...
+});
 ```
 
 ### Event Monitoring

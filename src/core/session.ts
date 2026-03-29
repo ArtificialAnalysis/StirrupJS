@@ -34,6 +34,9 @@ export interface SessionState {
 
   /** Skills metadata loaded at session start */
   skillsMetadata: SkillMetadata[];
+
+  /** Whether this session owns its exec env (should dispose it on cleanup) */
+  execEnvOwned: boolean;
 }
 
 /**
@@ -56,6 +59,7 @@ export function createSessionState(depth: number = 0): SessionState {
     depth,
     uploadedFilePaths: [],
     skillsMetadata: [],
+    execEnvOwned: true,
   };
 }
 
