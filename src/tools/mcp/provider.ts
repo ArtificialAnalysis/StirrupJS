@@ -5,10 +5,13 @@
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
+import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 import { z } from 'zod';
 import type { Tool, ToolProvider, ToolResult } from '../../core/models.js';
 import { ToolUseCountMetadata } from '../../core/models.js';
-import type { McpConfig } from './config.js';
+import type { McpConfig, McpServerConfig } from './config.js';
 import { readFile } from 'fs/promises';
 
 /**
@@ -16,7 +19,7 @@ import { readFile } from 'fs/promises';
  */
 interface McpClientWrapper {
   client: Client;
-  transport: StdioClientTransport;
+  transport: Transport;
   serverName: string;
 }
 
@@ -73,19 +76,7 @@ export class MCPToolProvider implements ToolProvider {
     // Connect to each server
     for (const [serverName, serverConfig] of serverEntries) {
       try {
-        // For now, only support stdio transport
-        // Other transports can be added later
-        if (serverConfig.type !== 'stdio') {
-          console.warn(`Unsupported MCP transport type: ${serverConfig.type} for server ${serverName}`);
-          continue;
-        }
-
-        // Create client and transport
-        const transport = new StdioClientTransport({
-          command: serverConfig.config.command,
-          args: serverConfig.config.args,
-          env: serverConfig.config.env,
-        });
+        const transport = this.createTransport(serverConfig, serverName);
 
         const client = new Client(
           {
@@ -116,6 +107,40 @@ export class MCPToolProvider implements ToolProvider {
     }
 
     return tools;
+  }
+
+  /**
+   * Create the appropriate transport for a server config
+   */
+  private createTransport(serverConfig: McpServerConfig, serverName: string): Transport {
+    switch (serverConfig.type) {
+      case 'stdio':
+        return new StdioClientTransport({
+          command: serverConfig.config.command,
+          args: serverConfig.config.args,
+          env: serverConfig.config.env,
+        });
+
+      case 'http':
+      case 'url': {
+        const url = new URL(serverConfig.config.url);
+        const headers = serverConfig.config.headers;
+        return new StreamableHTTPClientTransport(url, {
+          requestInit: headers ? { headers } : undefined,
+        });
+      }
+
+      case 'sse': {
+        const url = new URL(serverConfig.config.url);
+        const headers = serverConfig.config.headers;
+        return new SSEClientTransport(url, {
+          requestInit: headers ? { headers } : undefined,
+        });
+      }
+
+      default:
+        throw new Error(`Unsupported MCP transport type: ${(serverConfig as any).type} for server ${serverName}`);
+    }
   }
 
   /**

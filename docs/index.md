@@ -39,7 +39,7 @@ import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 const client = new ChatCompletionsClient({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: 'https://openrouter.ai/api/v1',
-  model: 'anthropic/claude-sonnet-4.5',
+  model: 'anthropic/claude-sonnet-4.6',
 });
 
 // Create an agent with tools
@@ -82,7 +82,7 @@ For non-OpenAI providers, change the base URL of the `ChatCompletionsClient`:
 const client = new ChatCompletionsClient({
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: 'https://openrouter.ai/api/v1',
-  model: 'anthropic/claude-sonnet-4.5',
+  model: 'anthropic/claude-sonnet-4.6',
 });
 ```
 

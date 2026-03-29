@@ -15,7 +15,7 @@ import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 const client = new ChatCompletionsClient({
   apiKey: process.env.OPENROUTER_API_KEY!,
   baseURL: 'https://openrouter.ai/api/v1',
-  model: 'anthropic/claude-sonnet-4.5',
+  model: 'anthropic/claude-sonnet-4.6',
 });
 
 const agent = new Agent({
@@ -392,7 +392,7 @@ import { OpenResponsesClient } from '@stirrup/stirrup/clients/open-responses';
 import { Agent, DEFAULT_TOOLS, SIMPLE_FINISH_TOOL } from '@stirrup/stirrup';
 
 const client = new OpenResponsesClient({
-  model: 'anthropic/claude-sonnet-4.5',
+  model: 'anthropic/claude-sonnet-4.6',
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: 'https://openrouter.ai/api/v1',
   // For o-series models: reasoningEffort: 'medium',
@@ -459,9 +459,116 @@ if (stats) {
 }
 ```
 
+## MCP (Model Context Protocol)
+
+### HTTP MCP Server
+
+Connect to a remote MCP server over HTTP using Streamable HTTP transport:
+
+```typescript
+import { Agent, MCPToolProvider, SIMPLE_FINISH_TOOL, type McpConfig } from '@stirrup/stirrup';
+import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
+
+const client = new ChatCompletionsClient({
+  apiKey: process.env.OPENROUTER_API_KEY!,
+  baseURL: 'https://openrouter.ai/api/v1',
+  model: 'anthropic/claude-sonnet-4.6',
+});
+
+const mcpConfig: McpConfig = {
+  mcpServers: {
+    supabase: {
+      type: 'url',
+      config: {
+        url: `https://mcp.supabase.com/mcp?project_ref=${process.env.SUPABASE_PROJECT_REF}&read_only=true`,
+        headers: {
+          Authorization: `Bearer ${process.env.SUPABASE_TOKEN}`,
+        },
+      },
+    },
+  },
+};
+
+const mcpProvider = MCPToolProvider.fromConfigObject(mcpConfig);
+
+const agent = new Agent({
+  client,
+  name: 'mcp-agent',
+  maxTurns: 10,
+  tools: [mcpProvider],
+  finishTool: SIMPLE_FINISH_TOOL,
+  systemPrompt: 'You are a helpful assistant with access to remote MCP tools.',
+});
+
+await using session = agent.session();
+const result = await session.run('List the available tables.');
+```
+
+### Mixed Transport Types
+
+Combine HTTP, SSE, and stdio MCP servers in one config:
+
+```typescript
+const mcpConfig: McpConfig = {
+  mcpServers: {
+    remote: {
+      type: 'url',
+      config: {
+        url: 'https://example.com/mcp',
+        headers: { Authorization: 'Bearer ...' },
+      },
+    },
+    legacy: {
+      type: 'sse',
+      config: {
+        url: 'https://example.com/sse',
+      },
+    },
+    local: {
+      type: 'stdio',
+      config: {
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+      },
+    },
+  },
+};
+
+// Connect to all servers
+const mcpProvider = MCPToolProvider.fromConfigObject(mcpConfig);
+
+// Or connect to specific servers only
+const remoteOnly = MCPToolProvider.fromConfigObject(mcpConfig, ['remote']);
+```
+
+### MCP Config File
+
+Load MCP servers from a JSON file:
+
+```json
+{
+  "mcpServers": {
+    "supabase": {
+      "type": "url",
+      "config": {
+        "url": "https://mcp.supabase.com/mcp?project_ref=xxx&read_only=true",
+        "headers": {
+          "Authorization": "Bearer your-token"
+        }
+      }
+    }
+  }
+}
+```
+
+```typescript
+const mcpProvider = await MCPToolProvider.fromConfig('./mcp-servers.json');
+```
+
 ## Next Steps
 
 - [Creating Tools](guides/tools.md) - Deep dive into custom tools
 - [Tool Providers](guides/tool-providers.md) - Managing tool lifecycle
+- [MCP](guides/mcp.md) - Connect to MCP servers
 - [Sub-Agents](guides/sub-agents.md) - Complex delegation patterns
 - [Code Execution](guides/code-execution.md) - Different execution backends

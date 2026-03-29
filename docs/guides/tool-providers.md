@@ -112,6 +112,32 @@ const provider = new E2BCodeExecToolProvider({
 });
 ```
 
+### MCPToolProvider
+
+Connects to MCP (Model Context Protocol) servers and exposes their tools. Supports stdio, HTTP (Streamable HTTP), SSE, and URL transport types:
+
+```typescript
+import { MCPToolProvider } from '@stirrup/stirrup';
+
+// From config object
+const provider = MCPToolProvider.fromConfigObject({
+  mcpServers: {
+    supabase: {
+      type: 'url',
+      config: {
+        url: 'https://mcp.supabase.com/mcp?project_ref=xxx&read_only=true',
+        headers: { Authorization: 'Bearer ...' },
+      },
+    },
+  },
+});
+
+// From config file
+const provider2 = await MCPToolProvider.fromConfig('./mcp-servers.json');
+```
+
+See the [MCP Guide](mcp.md) for full details.
+
 ## Creating Custom Providers
 
 ### Basic Example

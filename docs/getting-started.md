@@ -36,7 +36,7 @@ import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 const client = new ChatCompletionsClient({
   apiKey: process.env.OPENROUTER_API_KEY!,
   baseURL: 'https://openrouter.ai/api/v1',
-  model: 'anthropic/claude-sonnet-4.5',
+  model: 'anthropic/claude-sonnet-4.6',
   maxTokens: 100_000,
 });
 
@@ -108,7 +108,7 @@ Use `ChatCompletionsClient` to use OpenAI models or OpenAI-compatible APIs:
 const client = new ChatCompletionsClient({
   apiKey: process.env.OPENROUTER_API_KEY!,
   baseURL: 'https://openrouter.ai/api/v1',
-  model: 'anthropic/claude-sonnet-4.5',
+  model: 'anthropic/claude-sonnet-4.6',
 });
 
 // Together AI

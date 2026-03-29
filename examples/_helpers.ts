@@ -3,8 +3,8 @@
  */
 
 import { config } from 'dotenv';
-import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { fileURLToPath } from 'url';
 
 /**
  * Load environment variables from .env file in project root
@@ -23,7 +23,7 @@ export function loadEnv() {
 export function getApiConfig() {
   const apiKey = process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY;
   const baseURL = process.env.OPENROUTER_API_KEY ? 'https://openrouter.ai/api/v1' : undefined;
-  const model = process.env.OPENROUTER_API_KEY ? 'anthropic/claude-sonnet-4.5' : 'gpt-5.2';
+  const model = process.env.OPENROUTER_API_KEY ? 'anthropic/claude-sonnet-4.6' : 'gpt-5.2';
 
   if (!apiKey) {
     console.error('Error: Set OPENROUTER_API_KEY or OPENAI_API_KEY in .env file');

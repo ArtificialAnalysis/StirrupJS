@@ -71,7 +71,7 @@ import { ChatCompletionsClient } from '@stirrup/stirrup/clients/openai';
 const client = new ChatCompletionsClient({
   apiKey: process.env.OPENROUTER_API_KEY!,
   baseURL: 'https://openrouter.ai/api/v1',
-  model: 'anthropic/claude-sonnet-4.5',
+  model: 'anthropic/claude-sonnet-4.6',
   maxTokens: 100_000,  // Optional: Max tokens in response
 });
 ```
@@ -90,7 +90,7 @@ For models via the OpenAI Responses API (works with OpenAI and OpenRouter):
 import { OpenResponsesClient } from '@stirrup/stirrup/clients/open-responses';
 
 const client = new OpenResponsesClient({
-  model: 'anthropic/claude-sonnet-4.5',
+  model: 'anthropic/claude-sonnet-4.6',
   apiKey: process.env.OPENROUTER_API_KEY,
   baseURL: 'https://openrouter.ai/api/v1',
   // For o-series models:

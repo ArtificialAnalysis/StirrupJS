@@ -9,6 +9,7 @@ export {
   type StdioServerConfig,
   type SseServerConfig,
   type HttpServerConfig,
+  type UrlServerConfig,
   type WebSocketServerConfig,
   McpConfigSchema,
   detectTransportType,
