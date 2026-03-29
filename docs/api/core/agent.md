@@ -19,6 +19,8 @@ interface AgentConfig<FP = unknown, FM = unknown> {
   finishTool?: Tool<FP, FM>;
   systemPrompt?: string;
   contextSummarizationCutoff?: number;
+  blockSuccessiveAssistantMessages?: boolean;
+  shareParentExecEnv?: boolean;
   runSyncInThread?: boolean;
   textOnlyToolResponses?: boolean;
 }
@@ -33,6 +35,8 @@ interface AgentConfig<FP = unknown, FM = unknown> {
 | `finishTool` | `Tool<FP, FM>` | - | Tool to signal completion |
 | `systemPrompt` | `string` | - | Initial system message |
 | `contextSummarizationCutoff` | `number` | `0.75` | Context usage before summarization (0-1) |
+| `blockSuccessiveAssistantMessages` | `boolean` | `false` | Inject continuation prompt when assistant has no tool calls |
+| `shareParentExecEnv` | `boolean` | `false` | Sub-agents reuse parent's execution environment |
 | `runSyncInThread` | `boolean` | `false` | Run sync executors in worker threads |
 | `textOnlyToolResponses` | `boolean` | `false` | Convert tool responses to text |
 
@@ -50,8 +54,12 @@ session(config?: SessionConfig): this
 
 ```typescript
 interface SessionConfig {
-  outputDir?: string;      // Default: './output'
-  inputFiles?: string | string[];  // Reserved for future use
+  outputDir?: string;          // Default: './output'
+  inputFiles?: string | string[];  // Files to upload to execution environment
+  skillsDir?: string;          // Directory containing skill definitions
+  noLogger?: boolean;          // Disable default structured logger
+  loggerOptions?: StructuredLoggerOptions;  // Logger configuration
+  resume?: boolean;            // Resume from cached state if available
 }
 ```
 
@@ -90,6 +98,7 @@ interface AgentRunResult<FP, FM = unknown> {
   finishParams?: FP;                // Finish tool parameters
   messageHistory: ChatMessage[][];  // Conversation history (grouped)
   runMetadata: Record<string, unknown>;  // Aggregated tool metadata
+  speedStats?: SpeedStats;          // Performance metrics (OTPS, timing)
 }
 ```
 
@@ -207,7 +216,7 @@ on(event: string, handler: (data: any) => void): void
 | `tool:complete` | `{ name, success }` | Tool execution completed |
 | `tool:error` | `{ name, error }` | Tool execution failed |
 | `turn:complete` | `{ tokenUsage }` | Turn completed |
-| `run:complete` | `{ result, duration }` | Run completed successfully |
+| `run:complete` | `{ result, duration, speedStats }` | Run completed successfully |
 | `run:error` | `{ error, duration }` | Run failed |
 
 **Usage:**

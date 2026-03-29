@@ -383,6 +383,82 @@ await using session = agent.session({
 await session.run('Use the data_analysis skill to analyze the CSV and create a chart.');
 ```
 
+## OpenAI Responses API
+
+Use the `OpenResponsesClient` for models via the Responses API. Works with OpenAI directly and OpenRouter:
+
+```typescript
+import { OpenResponsesClient } from '@stirrup/stirrup/clients/open-responses';
+import { Agent, DEFAULT_TOOLS, SIMPLE_FINISH_TOOL } from '@stirrup/stirrup';
+
+const client = new OpenResponsesClient({
+  model: 'anthropic/claude-sonnet-4.5',
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+  // For o-series models: reasoningEffort: 'medium',
+});
+
+const agent = new Agent({
+  client,
+  name: 'responses-agent',
+  tools: DEFAULT_TOOLS,
+  finishTool: SIMPLE_FINISH_TOOL,
+});
+
+await using session = agent.session({ outputDir: './output' });
+const result = await session.run('What is the capital of France?');
+
+// Speed metrics are available on every run
+console.log('OTPS:', result.speedStats?.totalOutputTokens! / (result.speedStats?.totalGenerationMs! / 1000));
+```
+
+## Agent Run Cache & Resume
+
+When an agent run is interrupted (max turns, errors), conversation state is automatically cached. Resume from where you left off:
+
+```typescript
+import { Agent, DEFAULT_TOOLS, SIMPLE_FINISH_TOOL, CacheManager } from '@stirrup/stirrup';
+
+const task = 'Analyze this complex dataset and create visualizations.';
+
+// First run - limited turns, may not finish
+const agent1 = new Agent({ client, name: 'analyst', maxTurns: 2, tools: DEFAULT_TOOLS, finishTool: SIMPLE_FINISH_TOOL });
+await using session1 = agent1.session({ outputDir: './output' });
+const result1 = await session1.run(task);
+
+if (!result1.finishParams) {
+  console.log('Run interrupted, state cached automatically.');
+}
+
+// Second run - resume from cache
+const agent2 = new Agent({ client, name: 'analyst', maxTurns: 10, tools: DEFAULT_TOOLS, finishTool: SIMPLE_FINISH_TOOL });
+await using session2 = agent2.session({ outputDir: './output', resume: true });
+const result2 = await session2.run(task);  // Picks up where it left off
+
+console.log('Completed:', result2.finishParams?.reason);
+```
+
+## Speed Metrics
+
+Every agent run tracks performance metrics. The structured logger displays them automatically, and they're available in the run result:
+
+```typescript
+const result = await session.run('Create a chart');
+
+const stats = result.speedStats;
+if (stats) {
+  const otps = stats.totalGenerationMs > 0
+    ? (stats.totalOutputTokens / (stats.totalGenerationMs / 1000)).toFixed(1)
+    : 'N/A';
+
+  console.log(`Model: ${stats.modelSlug}`);
+  console.log(`OTPS: ${otps} tokens/sec`);
+  console.log(`Generation: ${(stats.totalGenerationMs / 1000).toFixed(1)}s (${stats.generationCount} calls)`);
+  console.log(`Tool time: ${(stats.totalToolMs / 1000).toFixed(1)}s`);
+  console.log('Tool breakdown:', stats.toolBreakdown);
+}
+```
+
 ## Next Steps
 
 - [Creating Tools](guides/tools.md) - Deep dive into custom tools

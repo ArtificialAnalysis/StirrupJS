@@ -108,6 +108,32 @@ export const ChatMessageSchema = z.discriminatedUnion('role', [
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 
 // ============================================================================
+// Summary Message Marker
+// ============================================================================
+
+/** Marker symbol for summary messages (not serialized to JSON) */
+export const SUMMARY_MESSAGE_MARKER = Symbol.for('stirrup:summary');
+
+/** A UserMessage that is a context summarization (carries marker symbol) */
+export interface SummaryMessage extends UserMessage {
+  [SUMMARY_MESSAGE_MARKER]: true;
+}
+
+/** Check if a message is a SummaryMessage */
+export function isSummaryMessage(msg: ChatMessage): msg is SummaryMessage {
+  return msg.role === 'user' && SUMMARY_MESSAGE_MARKER in msg;
+}
+
+/** Create a SummaryMessage */
+export function createSummaryMessage(content: string): SummaryMessage {
+  return {
+    role: 'user',
+    content,
+    [SUMMARY_MESSAGE_MARKER]: true,
+  };
+}
+
+// ============================================================================
 // Tool System
 // ============================================================================
 
@@ -115,6 +141,8 @@ export type ChatMessage = z.infer<typeof ChatMessageSchema>;
 export interface ToolResult<M = unknown> {
   content: Content;
   metadata?: M;
+  /** Whether the tool execution was logically successful. When false on a finish tool, the agent continues. */
+  success?: boolean;
 }
 
 /**

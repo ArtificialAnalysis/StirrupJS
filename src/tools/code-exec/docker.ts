@@ -4,9 +4,9 @@
  */
 
 import Docker from 'dockerode';
-import { mkdtemp, rm, mkdir, readFile, writeFile } from 'fs/promises';
+import { mkdtemp, rm, mkdir, readFile, writeFile, stat } from 'fs/promises';
 import { tmpdir } from 'os';
-import { join, dirname } from 'path';
+import { join, dirname, resolve, relative, isAbsolute } from 'path';
 import { CodeExecToolProvider, type CommandResult } from './base.js';
 import { DEFAULT_COMMAND_TIMEOUT } from '../../constants.js';
 
@@ -194,28 +194,61 @@ export class DockerCodeExecToolProvider extends CodeExecToolProvider {
     }
   }
 
-  async readFileBytes(path: string): Promise<Buffer> {
-    if (!this.tempDir) {
-      throw new Error('Temp directory not initialized');
+  /**
+   * Resolve a path to the corresponding host filesystem path.
+   *
+   * Priority:
+   * 1. If path is already an absolute host path within tempDir, use as-is.
+   * 2. If path starts with container workingDir, map to host equivalent.
+   * 3. If path is absolute but not in workingDir, strip root and resolve relative to tempDir.
+   * 4. If path is relative, resolve relative to tempDir.
+   */
+  private resolveHostPath(path: string): string {
+    if (!this.tempDir) throw new Error('Temp directory not initialized');
+
+    const resolvedTempDir = resolve(this.tempDir);
+
+    if (isAbsolute(path)) {
+      const resolvedPath = resolve(path);
+
+      // Case 1: Already an absolute path within tempDir
+      if (resolvedPath.startsWith(resolvedTempDir)) {
+        return resolvedPath;
+      }
+
+      // Case 2: Absolute container path starting with workingDir
+      if (path.startsWith(this.config.workingDir)) {
+        const relativePart = relative(this.config.workingDir, path);
+        return join(this.tempDir, relativePart);
+      }
+
+      // Case 3: Other absolute paths -- strip leading / and resolve relative to tempDir
+      return join(this.tempDir, path.replace(/^\/+/, ''));
     }
 
-    // Read from host temp directory (mapped to container)
-    const fullPath = join(this.tempDir, path);
+    // Case 4: Relative path
+    return join(this.tempDir, path);
+  }
+
+  async readFileBytes(path: string): Promise<Buffer> {
+    const fullPath = this.resolveHostPath(path);
     return await readFile(fullPath);
   }
 
   async writeFileBytes(path: string, content: Buffer): Promise<void> {
-    if (!this.tempDir) {
-      throw new Error('Temp directory not initialized');
-    }
-
-    // Write to host temp directory (mapped to container)
-    const fullPath = join(this.tempDir, path);
-
-    // Ensure directory exists
+    const fullPath = this.resolveHostPath(path);
     await mkdir(dirname(fullPath), { recursive: true });
-
     await writeFile(fullPath, content);
+  }
+
+  async fileExists(path: string): Promise<boolean> {
+    try {
+      const fullPath = this.resolveHostPath(path);
+      const s = await stat(fullPath);
+      return s.isFile();
+    } catch {
+      return false;
+    }
   }
 
   /**

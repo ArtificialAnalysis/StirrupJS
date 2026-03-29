@@ -290,6 +290,41 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
       })
     );
 
+    // Speed Metrics section
+    const ss = data.speedStats;
+    if (ss) {
+      const otps =
+        ss.totalGenerationMs > 0 ? (ss.totalOutputTokens / (ss.totalGenerationMs / 1000)).toFixed(1) : 'N/A';
+
+      const speedLines = [
+        `Model                     ${ss.modelSlug}`,
+        `OTPS (output tokens/sec)  ${otps}`,
+        `Generation time           ${(ss.totalGenerationMs / 1000).toFixed(1)}s (${ss.generationCount} call${ss.generationCount === 1 ? '' : 's'})`,
+        `Tool execution time       ${(ss.totalToolMs / 1000).toFixed(1)}s`,
+      ];
+
+      const breakdownEntries = Object.entries(ss.toolBreakdown);
+      if (breakdownEntries.length > 0) {
+        const avgDurations = breakdownEntries.map(([name, ms]) => {
+          const toolMeta = (data.result.runMetadata as any)[name];
+          const count = toolMeta?.numUses ?? toolMeta?.num_uses ?? '?';
+          return `  ${name.padEnd(22)} ${(ms / 1000).toFixed(1)}s (${count} call${count === 1 ? '' : 's'})`;
+        });
+        speedLines.push('', 'Tool breakdown:', ...avgDurations);
+      }
+
+      console.log(
+        boxen(speedLines.join('\n'), {
+          padding: { top: 0, bottom: 0, left: 1, right: 1 },
+          borderStyle: 'round',
+          borderColor: 'gray',
+          title: 'Speed Metrics',
+          titleAlignment: 'left',
+          width: termWidth,
+        })
+      );
+    }
+
     console.log();
   };
 

@@ -19,6 +19,8 @@ const agent = new Agent({
   finishTool: SIMPLE_FINISH_TOOL, // Optional: Tool to signal completion
   systemPrompt: 'You are a helpful assistant.',  // Optional: System prompt
   contextSummarizationCutoff: 0.75,  // Optional: When to summarize (0-1)
+  blockSuccessiveAssistantMessages: false, // Optional: Inject continuation prompts
+  shareParentExecEnv: false,        // Optional: Sub-agents share parent's sandbox
   runSyncInThread: false,            // Optional: Run sync executors in worker threads
   textOnlyToolResponses: false,      // Optional: Convert tool responses to text
 });
@@ -43,6 +45,8 @@ Each turn:
 
 When the conversation approaches the context limit (default: 75%), StirrupJS automatically summarizes older messages to free up space. This uses a smaller, faster model to preserve important context while reducing token usage.
 
+Summary messages are internally marked to prevent accumulation -- only the latest summary and acknowledgement are kept across successive summarization cycles.
+
 ```typescript
 const agent = new Agent({
   client,
@@ -52,7 +56,12 @@ const agent = new Agent({
 
 ## Client
 
-The client handles communication with the LLM. StirrupJS includes `ChatCompletionsClient` for OpenAI-compatible APIs.
+The client handles communication with the LLM. StirrupJS includes multiple client implementations:
+
+- **`ChatCompletionsClient`** - OpenAI-compatible Chat Completions API
+- **`OpenResponsesClient`** - OpenAI Responses API (for o-series models)
+- **`AnthropicClient`** - Native Anthropic SDK
+- **`VercelAIClient`** - Vercel AI SDK (20+ providers)
 
 ### ChatCompletionsClient
 
@@ -73,18 +82,31 @@ const client = new ChatCompletionsClient({
 - `model`: Model identifier
 - `maxTokens`: Maximum tokens in response (optional)
 
-### Custom Clients
+### OpenResponsesClient
 
-Implement the `Client` interface to use other LLM providers:
+For models via the OpenAI Responses API (works with OpenAI and OpenRouter):
 
 ```typescript
-interface Client {
-  name: string;
-  complete(
-    messages: ChatMessage[],
-    tools: ToolDefinition[],
-    signal?: AbortSignal
-  ): Promise<ChatCompletionResponse>;
+import { OpenResponsesClient } from '@stirrup/stirrup/clients/open-responses';
+
+const client = new OpenResponsesClient({
+  model: 'anthropic/claude-sonnet-4.5',
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+  // For o-series models:
+  // reasoningEffort: 'medium',
+});
+```
+
+### Custom Clients
+
+Implement the `LLMClient` interface to use other LLM providers:
+
+```typescript
+interface LLMClient {
+  readonly modelSlug: string;
+  readonly maxTokens: number;
+  generate(messages: ChatMessage[], tools: Map<string, Tool>): Promise<AssistantMessage>;
 }
 ```
 
@@ -216,6 +238,7 @@ await using session = agent.session({
   outputDir: './output',      // Save output files here
   inputFiles: ['data.csv'],   // Upload input files (files, globs, or directories)
   skillsDir: 'skills',        // Upload skills + add skills list to system prompt
+  resume: true,               // Resume from cached state if available
 });
 ```
 
@@ -261,6 +284,19 @@ result.messageHistory  // ChatMessage[][]
 ```typescript
 result.runMetadata  // Record<string, unknown>
 // Example: { code_exec: { numUses: 3 }, web_fetch: { numUses: 1 } }
+```
+
+**`speedStats`** - Performance metrics:
+```typescript
+result.speedStats  // SpeedStats | undefined
+// {
+//   modelSlug: 'claude-sonnet-4-5',
+//   totalGenerationMs: 5200,       // Total LLM generation time
+//   totalOutputTokens: 1200,       // Total output tokens
+//   totalToolMs: 3100,             // Total tool execution time
+//   generationCount: 4,            // Number of LLM calls
+//   toolBreakdown: { code_exec: 2800, web_fetch: 300 }
+// }
 ```
 
 ## Receiving Output Files from the Agent

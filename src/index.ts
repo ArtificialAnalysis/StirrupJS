@@ -43,6 +43,10 @@ export {
   ContextOverflowError,
   ToolExecutionError,
   AgentValidationError,
+  SUMMARY_MESSAGE_MARKER,
+  isSummaryMessage,
+  createSummaryMessage,
+  type SummaryMessage,
 } from './core/models.js';
 
 // Zod schemas for validation
@@ -108,6 +112,7 @@ export {
   type AgentEvents,
   type AgentRunOptions,
   type AgentStreamEvent,
+  type SpeedStats,
 } from './core/agent.js';
 export { SubAgentMetadata, SubAgentParamsSchema, type SubAgentParams } from './core/sub-agent.js';
 
@@ -120,6 +125,9 @@ export {
   getParentDepth,
   type SessionState,
 } from './core/session.js';
+
+// Cache
+export { CacheManager, type CachedRunState } from './core/cache.js';
 
 // Tools
 export {

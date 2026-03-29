@@ -21,6 +21,10 @@
     "./clients/vercel-ai": {
       "types": "./dist/clients/vercel-ai-client.d.ts",
       "import": "./dist/clients/vercel-ai-client.js"
+    },
+    "./clients/open-responses": {
+      "types": "./dist/clients/open-responses-client.d.ts",
+      "import": "./dist/clients/open-responses-client.js"
     }
   },
   "files": [

@@ -132,6 +132,12 @@ export abstract class CodeExecToolProvider implements ToolProvider {
   abstract writeFileBytes(path: string, content: Buffer): Promise<void>;
 
   /**
+   * Check if a file exists in the execution environment
+   * Must be implemented by subclasses
+   */
+  abstract fileExists(path: string): Promise<boolean>;
+
+  /**
    * Upload files to the execution environment
    * Default implementation for subclasses to override if needed
    */
@@ -323,12 +329,18 @@ export abstract class CodeExecToolProvider implements ToolProvider {
   }
 
   /**
-   * Truncate content if too long
+   * Truncate content if too long, keeping both start and end
+   * to preserve error messages that typically appear at the end
    */
   protected truncate(content: string, maxLength: number): string {
     if (content.length <= maxLength) {
       return content;
     }
-    return content.substring(0, maxLength) + '\n\n[Output truncated]';
+    const half = Math.floor(maxLength / 2);
+    return (
+      content.substring(0, half) +
+      '\n\n[... output truncated ...]\n\n' +
+      content.substring(content.length - half)
+    );
   }
 }

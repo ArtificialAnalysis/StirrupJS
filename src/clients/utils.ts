@@ -394,7 +394,7 @@ export function toAnthropicTools(tools: Map<string, Tool>): unknown[] {
  * @param schema Zod schema
  * @returns JSON Schema object
  */
-function zodToJsonSchema(schema: unknown): Record<string, unknown> {
+export function zodToJsonSchema(schema: unknown): Record<string, unknown> {
   const unwrapped = unwrapZodSchema(schema);
   const def = getZodDef(unwrapped);
   if (!def) {
