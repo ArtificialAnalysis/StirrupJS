@@ -3,9 +3,17 @@
  * Executes commands in E2B cloud sandbox
  */
 
-import { Sandbox } from '@e2b/code-interpreter';
+import type { Sandbox } from '@e2b/code-interpreter';
 import { CodeExecToolProvider, type CommandResult } from './base.js';
 import { DEFAULT_E2B_TIMEOUT } from '../../constants.js';
+
+let _Sandbox: typeof Sandbox | undefined;
+async function getSandbox(): Promise<typeof Sandbox> {
+  if (!_Sandbox) {
+    _Sandbox = (await import('@e2b/code-interpreter')).Sandbox;
+  }
+  return _Sandbox;
+}
 
 /**
  * E2B code execution provider configuration
@@ -61,8 +69,11 @@ export class E2BCodeExecToolProvider extends CodeExecToolProvider {
   }
 
   override async getTools() {
+    // Lazily load @e2b/code-interpreter
+    const SandboxImpl = await getSandbox();
+
     // Create sandbox
-    this.sandbox = await Sandbox.create({
+    this.sandbox = await SandboxImpl.create({
       apiKey: this.apiKey,
       template: this.template,
       timeoutMs: this.timeout,

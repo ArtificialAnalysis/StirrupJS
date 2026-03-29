@@ -3,12 +3,20 @@
  * Executes commands in a Docker container with volume mount
  */
 
-import Docker from 'dockerode';
+import type Docker from 'dockerode';
 import { mkdtemp, rm, mkdir, readFile, writeFile, stat } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join, dirname, resolve, relative, isAbsolute } from 'path';
 import { CodeExecToolProvider, type CommandResult } from './base.js';
 import { DEFAULT_COMMAND_TIMEOUT } from '../../constants.js';
+
+let _Docker: typeof Docker | undefined;
+async function getDocker(): Promise<typeof Docker> {
+  if (!_Docker) {
+    _Docker = (await import('dockerode')).default;
+  }
+  return _Docker;
+}
 
 /**
  * Docker code execution provider configuration
@@ -38,7 +46,7 @@ export interface DockerCodeExecConfig {
  * Executes commands in a Docker container with host directory mounted as volume
  */
 export class DockerCodeExecToolProvider extends CodeExecToolProvider {
-  private docker: Docker;
+  private docker?: Docker;
   private container?: Docker.Container;
   private tempDir?: string;
   private config: Required<Omit<DockerCodeExecConfig, 'allowedCommands' | 'tempBaseDir' | 'description'>>;
@@ -46,7 +54,6 @@ export class DockerCodeExecToolProvider extends CodeExecToolProvider {
   constructor(config: DockerCodeExecConfig) {
     super(config.allowedCommands, config.description);
 
-    this.docker = new Docker();
     this.config = {
       image: config.image,
       workingDir: config.workingDir ?? '/workspace',
@@ -93,6 +100,10 @@ export class DockerCodeExecToolProvider extends CodeExecToolProvider {
   }
 
   override async getTools() {
+    // Lazily load dockerode
+    const DockerImpl = await getDocker();
+    this.docker = new DockerImpl();
+
     // Create temp directory
     this.tempDir = await mkdtemp(join(tmpdir(), 'stirrup-docker-'));
 
