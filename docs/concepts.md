@@ -82,18 +82,31 @@ const client = new ChatCompletionsClient({
 - `model`: Model identifier
 - `maxTokens`: Maximum tokens in response (optional)
 
-### Custom Clients
+### OpenResponsesClient
 
-Implement the `Client` interface to use other LLM providers:
+For models via the OpenAI Responses API (works with OpenAI and OpenRouter):
 
 ```typescript
-interface Client {
-  name: string;
-  complete(
-    messages: ChatMessage[],
-    tools: ToolDefinition[],
-    signal?: AbortSignal
-  ): Promise<ChatCompletionResponse>;
+import { OpenResponsesClient } from '@stirrup/stirrup/clients/open-responses';
+
+const client = new OpenResponsesClient({
+  model: 'anthropic/claude-sonnet-4.5',
+  apiKey: process.env.OPENROUTER_API_KEY,
+  baseURL: 'https://openrouter.ai/api/v1',
+  // For o-series models:
+  // reasoningEffort: 'medium',
+});
+```
+
+### Custom Clients
+
+Implement the `LLMClient` interface to use other LLM providers:
+
+```typescript
+interface LLMClient {
+  readonly modelSlug: string;
+  readonly maxTokens: number;
+  generate(messages: ChatMessage[], tools: Map<string, Tool>): Promise<AssistantMessage>;
 }
 ```
 

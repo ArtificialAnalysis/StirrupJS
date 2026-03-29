@@ -151,7 +151,7 @@ const agent = new Agent({ client, name: 'claude_agent', ... });
 For models that support the newer Responses API (e.g., o3, o4-mini):
 
 ```typescript
-import { OpenResponsesClient } from '@stirrup/stirrup/clients/openai-responses';
+import { OpenResponsesClient } from '@stirrup/stirrup/clients/open-responses';
 
 const client = new OpenResponsesClient({
   model: 'o3-mini',
