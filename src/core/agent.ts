@@ -450,6 +450,20 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
           }
         }
 
+        // Auto-finish when model gives a text-only response with no tool calls.
+        // This prevents an unnecessary extra generate() call that some providers reject.
+        // Skip when blockSuccessiveAssistantMessages is enabled, as it injects a continuation prompt instead.
+        if (
+          this.finishTool &&
+          !this.blockSuccessiveAssistantMessages &&
+          (!assistantMessage.toolCalls || assistantMessage.toolCalls.length === 0) &&
+          assistantMessage.content
+        ) {
+          finishParams = undefined as z.infer<FP>;
+          messageHistory.push(currentGroup);
+          break;
+        }
+
         // Prevent successive assistant messages by injecting a continuation prompt
         if (
           this.blockSuccessiveAssistantMessages &&
@@ -656,6 +670,20 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
             messageHistory.push(currentGroup);
             break;
           }
+        }
+
+        // Auto-finish when model gives a text-only response with no tool calls.
+        // This prevents an unnecessary extra generate() call that some providers reject.
+        // Skip when blockSuccessiveAssistantMessages is enabled, as it injects a continuation prompt instead.
+        if (
+          this.finishTool &&
+          !this.blockSuccessiveAssistantMessages &&
+          (!assistantMessage.toolCalls || assistantMessage.toolCalls.length === 0) &&
+          assistantMessage.content
+        ) {
+          finishParams = undefined as z.infer<FP>;
+          messageHistory.push(currentGroup);
+          break;
         }
 
         // Prevent successive assistant messages by injecting a continuation prompt
