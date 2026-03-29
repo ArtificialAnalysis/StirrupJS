@@ -6,7 +6,7 @@ import { describe, it, expect } from 'vitest';
 
 describe('OpenResponsesClient', () => {
   it('should be importable', async () => {
-    const mod = await import('../../src/clients/openai-responses-client.js');
+    const mod = await import('../../src/clients/open-responses-client.js');
     expect(mod.OpenResponsesClient).toBeDefined();
   });
 
@@ -15,7 +15,7 @@ describe('OpenResponsesClient', () => {
     delete process.env.OPENAI_API_KEY;
 
     try {
-      const { OpenResponsesClient } = await import('../../src/clients/openai-responses-client.js');
+      const { OpenResponsesClient } = await import('../../src/clients/open-responses-client.js');
       expect(() => new OpenResponsesClient({ model: 'gpt-4o' })).toThrow('API key is required');
     } finally {
       if (origKey) process.env.OPENAI_API_KEY = origKey;
@@ -23,7 +23,7 @@ describe('OpenResponsesClient', () => {
   });
 
   it('should create client with API key', async () => {
-    const { OpenResponsesClient } = await import('../../src/clients/openai-responses-client.js');
+    const { OpenResponsesClient } = await import('../../src/clients/open-responses-client.js');
     const client = new OpenResponsesClient({
       model: 'gpt-4o',
       apiKey: 'test-key-123',
@@ -33,7 +33,7 @@ describe('OpenResponsesClient', () => {
   });
 
   it('should support custom maxTokens', async () => {
-    const { OpenResponsesClient } = await import('../../src/clients/openai-responses-client.js');
+    const { OpenResponsesClient } = await import('../../src/clients/open-responses-client.js');
     const client = new OpenResponsesClient({
       model: 'o3-mini',
       apiKey: 'test-key',
@@ -43,7 +43,7 @@ describe('OpenResponsesClient', () => {
   });
 
   it('should implement LLMClient interface', async () => {
-    const { OpenResponsesClient } = await import('../../src/clients/openai-responses-client.js');
+    const { OpenResponsesClient } = await import('../../src/clients/open-responses-client.js');
     const client = new OpenResponsesClient({
       model: 'gpt-4o',
       apiKey: 'test-key',
