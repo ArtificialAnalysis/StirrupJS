@@ -293,8 +293,7 @@ function createConsoleLogger<FP = unknown>(agent: Agent<any, any>, level: string
     // Speed Metrics section
     const ss = data.speedStats;
     if (ss) {
-      const otps =
-        ss.totalGenerationMs > 0 ? (ss.totalOutputTokens / (ss.totalGenerationMs / 1000)).toFixed(1) : 'N/A';
+      const otps = ss.totalGenerationMs > 0 ? (ss.totalOutputTokens / (ss.totalGenerationMs / 1000)).toFixed(1) : 'N/A';
 
       const speedLines = [
         `Model                     ${ss.modelSlug}`,

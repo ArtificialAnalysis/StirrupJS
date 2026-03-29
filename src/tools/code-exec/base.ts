@@ -337,10 +337,6 @@ export abstract class CodeExecToolProvider implements ToolProvider {
       return content;
     }
     const half = Math.floor(maxLength / 2);
-    return (
-      content.substring(0, half) +
-      '\n\n[... output truncated ...]\n\n' +
-      content.substring(content.length - half)
-    );
+    return content.substring(0, half) + '\n\n[... output truncated ...]\n\n' + content.substring(content.length - half);
   }
 }

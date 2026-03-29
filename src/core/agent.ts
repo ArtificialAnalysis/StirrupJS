@@ -23,7 +23,13 @@ import type {
   ToolResult,
   UserMessage,
 } from './models.js';
-import { AgentValidationError, TokenUsageMetadata, aggregateMetadata, isSummaryMessage, createSummaryMessage } from './models.js';
+import {
+  AgentValidationError,
+  TokenUsageMetadata,
+  aggregateMetadata,
+  isSummaryMessage,
+  createSummaryMessage,
+} from './models.js';
 import { createSessionState, getParentDepth, sessionContext, type SessionState } from './session.js';
 import { SubAgentMetadata, SubAgentParamsSchema, type SubAgentParams } from './sub-agent.js';
 import { CacheManager } from './cache.js';
@@ -34,7 +40,12 @@ import { CacheManager } from './cache.js';
  */
 export interface AgentEvents<FP = unknown> {
   'run:start': (data: { task: string | ChatMessage[]; depth: number }) => void;
-  'run:complete': (data: { result: AgentRunResult<FP>; duration: number; outputDir?: string; speedStats?: SpeedStats }) => void;
+  'run:complete': (data: {
+    result: AgentRunResult<FP>;
+    duration: number;
+    outputDir?: string;
+    speedStats?: SpeedStats;
+  }) => void;
   'run:error': (data: { error: Error; duration: number }) => void;
 
   'turn:start': (data: { turn: number; maxTurns: number }) => void;
