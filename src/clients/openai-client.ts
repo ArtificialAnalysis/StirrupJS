@@ -29,11 +29,20 @@ export interface ChatCompletionsClientConfig {
   /** Temperature for sampling (0-2) */
   temperature?: number;
 
+  /** Maximum tokens to generate in a single response */
+  maxCompletionTokens?: number;
+
+  /** Request timeout in milliseconds */
+  timeoutMs?: number;
+
   /** Whether to include reasoning tokens (for o1/o3 models) */
   includeReasoningTokens?: boolean;
 
   /** Reasoning effort level for extended thinking models */
   reasoningEffort?: 'low' | 'medium' | 'high';
+
+  /** Extra provider-specific request body fields for OpenAI-compatible endpoints */
+  extraBody?: Record<string, unknown>;
 
   /** Whether the model supports audio input */
   supportsAudioInput?: boolean;
@@ -45,8 +54,11 @@ export interface ChatCompletionsClientConfig {
  */
 export class ChatCompletionsClient implements LLMClient {
   private client: OpenAI;
-  private config: Required<Omit<ChatCompletionsClientConfig, 'baseURL' | 'reasoningEffort' | 'supportsAudioInput'>> & {
+  private config: Required<
+    Omit<ChatCompletionsClientConfig, 'baseURL' | 'reasoningEffort' | 'supportsAudioInput' | 'extraBody'>
+  > & {
     reasoningEffort?: 'low' | 'medium' | 'high';
+    extraBody: Record<string, unknown>;
     supportsAudioInput: boolean;
   };
 
@@ -58,8 +70,11 @@ export class ChatCompletionsClient implements LLMClient {
       baseURL,
       maxRetries = MAX_RETRY_ATTEMPTS,
       temperature = 1.0,
+      maxCompletionTokens = 0,
+      timeoutMs = 600_000,
       includeReasoningTokens = false,
       reasoningEffort,
+      extraBody = {},
       supportsAudioInput = false,
     } = config;
 
@@ -71,6 +86,7 @@ export class ChatCompletionsClient implements LLMClient {
       apiKey,
       baseURL,
       maxRetries: 0, // We handle retries ourselves
+      timeout: timeoutMs,
     });
 
     this.config = {
@@ -79,8 +95,11 @@ export class ChatCompletionsClient implements LLMClient {
       apiKey,
       maxRetries,
       temperature,
+      maxCompletionTokens,
+      timeoutMs,
       includeReasoningTokens,
       reasoningEffort,
+      extraBody,
       supportsAudioInput,
     };
   }
@@ -103,6 +122,10 @@ export class ChatCompletionsClient implements LLMClient {
       temperature: this.config.temperature,
     };
 
+    if (this.config.maxCompletionTokens > 0) {
+      params.max_tokens = this.config.maxCompletionTokens;
+    }
+
     if (openaiTools && openaiTools.length > 0) {
       params.tools = openaiTools as OpenAI.ChatCompletionTool[];
       params.tool_choice = 'auto';
@@ -112,6 +135,8 @@ export class ChatCompletionsClient implements LLMClient {
     if (this.config.reasoningEffort) {
       Object.assign(params, { reasoning_effort: this.config.reasoningEffort });
     }
+
+    Object.assign(params, this.config.extraBody);
 
     try {
       const response = await retry(

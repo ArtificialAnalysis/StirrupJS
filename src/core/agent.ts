@@ -142,6 +142,9 @@ export interface AgentConfig<FP extends z.ZodType, FM = unknown> {
 
   /** Whether to convert tool responses to text-only */
   textOnlyToolResponses?: boolean;
+
+  /** Maximum number of tool calls to execute concurrently within one assistant turn */
+  toolConcurrency?: number;
 }
 
 /**
@@ -230,6 +233,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
   private lastFinishParams?: z.infer<FP>;
   // Logger cleanup function
   private loggerCleanup?: () => void;
+  private toolConcurrency: number;
   // Cache resume flag
   private pendingResume = false;
 
@@ -248,6 +252,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
       shareParentExecEnv = false,
       runSyncInThread = true,
       textOnlyToolResponses = true,
+      toolConcurrency = 3,
     } = config;
 
     // Validate agent name
@@ -264,6 +269,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
     this.contextSummarizationCutoff = contextSummarizationCutoff;
     this.blockSuccessiveAssistantMessages = blockSuccessiveAssistantMessages;
     this.shareParentExecEnv = shareParentExecEnv;
+    this.toolConcurrency = Math.max(1, Math.floor(toolConcurrency));
     // Store for future use
     void runSyncInThread;
     void textOnlyToolResponses;
@@ -782,10 +788,19 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
     const toolDurationsMs: Record<string, number> = {};
     let finishSuccess: boolean | undefined;
     if (assistantMessage.toolCalls) {
-      for (const toolCall of assistantMessage.toolCalls) {
+      const toolResults = await mapConcurrent(assistantMessage.toolCalls, this.toolConcurrency, async (toolCall) => {
         const toolStart = Date.now();
         const { message: toolMessage, success: toolSuccess } = await this.runTool(toolCall, runMetadata);
-        toolDurationsMs[toolCall.name] = (toolDurationsMs[toolCall.name] ?? 0) + (Date.now() - toolStart);
+        return {
+          toolCall,
+          toolMessage,
+          toolSuccess,
+          durationMs: Date.now() - toolStart,
+        };
+      });
+
+      for (const { toolCall, toolMessage, toolSuccess, durationMs } of toolResults) {
+        toolDurationsMs[toolCall.name] = (toolDurationsMs[toolCall.name] ?? 0) + durationMs;
         toolMessages.push(toolMessage);
         // Track finish tool success status
         if (toolCall.name === FINISH_TOOL_NAME && toolSuccess !== undefined) {
@@ -1226,6 +1241,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
                 tools: this.tools,
                 finishTool: this.finishTool,
                 contextSummarizationCutoff: this.contextSummarizationCutoff,
+                toolConcurrency: this.toolConcurrency,
               })
             : this;
 
@@ -1295,4 +1311,20 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
       },
     };
   }
+}
+
+async function mapConcurrent<T, R>(items: T[], concurrency: number, mapper: (item: T, index: number) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (nextIndex < items.length) {
+      const index = nextIndex++;
+      results[index] = await mapper(items[index] as T, index);
+    }
+  }
+
+  const workerCount = Math.min(Math.max(1, concurrency), items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
 }
