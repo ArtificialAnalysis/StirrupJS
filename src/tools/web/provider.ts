@@ -56,7 +56,7 @@ export class WebSearchMetadata {
  * Parameters for web fetch
  */
 export const FetchWebPageParamsSchema = z.object({
-  url: z.string().url().describe('URL to fetch'),
+  url: z.string().describe('Absolute URL to fetch, e.g. https://example.com'),
 });
 
 export type FetchWebPageParams = z.infer<typeof FetchWebPageParamsSchema>;
@@ -117,6 +117,10 @@ export class WebToolProvider implements ToolProvider {
       parameters: FetchWebPageParamsSchema,
       executor: async (params): Promise<ToolResult<WebFetchMetadata>> => {
         try {
+          // Validate the URL here rather than in the wire schema, which is
+          // serialized to providers (a `.url()` refinement emits format: "uri",
+          // which breaks OpenAI strict tool calling).
+          new URL(params.url);
           const content = await this.fetchPage(params.url);
           return {
             content,

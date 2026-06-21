@@ -108,7 +108,9 @@ const schema = z.object({
   // Refined validation
   port: z.number().min(1).max(65535),
   email: z.string().email(),
-  url: z.string().url(),
+  // Prefer plain z.string() for URLs in tool parameters — `.url()` emits
+  // JSON Schema format: "uri", which breaks OpenAI strict tool calling.
+  url: z.string().describe('Absolute URL, e.g. https://example.com'),
 });
 ```
 
@@ -265,7 +267,7 @@ const tool: Tool<typeof schema, ApiCallMetadata> = {
 
 ```typescript
 const HttpRequestParamsSchema = z.object({
-  url: z.string().url().describe('URL to fetch'),
+  url: z.string().describe('Absolute URL to fetch, e.g. https://example.com'),
   method: z.enum(['GET', 'POST', 'PUT', 'DELETE']).default('GET'),
   headers: z.record(z.string()).optional().describe('HTTP headers'),
   body: z.string().optional().describe('Request body (JSON string)'),
@@ -384,8 +386,8 @@ Use Zod's validation features:
 ```typescript
 const schema = z.object({
   port: z.number().min(1).max(65535).describe('Port number (1-65535)'),
-  email: z.string().email().describe('Valid email address'),
-  url: z.string().url().describe('Valid HTTP/HTTPS URL'),
+  count: z.number().min(1).max(100).describe('Number of results (1-100)'),
+  mode: z.enum(['read', 'write']).describe('Access mode'),
 });
 ```
 
