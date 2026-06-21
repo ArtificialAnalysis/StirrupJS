@@ -183,7 +183,7 @@ export interface AgentRunResult<FP> {
  * Typed event interface for Agent class
  * Enables TypeScript to infer event types
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 export declare interface Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> {
   on<E extends keyof AgentEvents<z.infer<FP>>>(event: E, listener: AgentEvents<z.infer<FP>>[E]): this;
   once<E extends keyof AgentEvents<z.infer<FP>>>(event: E, listener: AgentEvents<z.infer<FP>>[E]): this;
@@ -339,10 +339,10 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
       signal?.throwIfAborted();
 
       const messages: ChatMessage[] =
-        typeof initMessages === 'string' ? [{ role: 'user', content: initMessages } as UserMessage] : initMessages;
+        typeof initMessages === 'string' ? [{ role: 'user', content: initMessages }] : initMessages;
 
       const systemPrompt = this.buildSystemPrompt();
-      const allMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt } as SystemMessage, ...messages];
+      const allMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
 
       const messageHistory: ChatMessage[][] = [];
       let currentMessages = allMessages;
@@ -428,7 +428,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
             if (toolCall.name === FINISH_TOOL_NAME && this.finishTool) {
               try {
                 const params = this.finishTool.parameters
-                  ? (this.finishTool.parameters.parse(this.parseToolCallArguments(toolCall.arguments)) as z.infer<FP>)
+                  ? this.finishTool.parameters.parse(this.parseToolCallArguments(toolCall.arguments))
                   : undefined;
                 finishParams = params;
                 break;
@@ -459,7 +459,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
           (!assistantMessage.toolCalls || assistantMessage.toolCalls.length === 0) &&
           assistantMessage.content
         ) {
-          finishParams = undefined as z.infer<FP>;
+          finishParams = undefined;
           messageHistory.push(currentGroup);
           break;
         }
@@ -578,10 +578,10 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
       signal?.throwIfAborted();
 
       const messages: ChatMessage[] =
-        typeof initMessages === 'string' ? [{ role: 'user', content: initMessages } as UserMessage] : initMessages;
+        typeof initMessages === 'string' ? [{ role: 'user', content: initMessages }] : initMessages;
 
       const systemPrompt = this.buildSystemPrompt();
-      const allMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt } as SystemMessage, ...messages];
+      const allMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
 
       const messageHistory: ChatMessage[][] = [];
       let currentMessages = allMessages;
@@ -651,7 +651,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
             if (toolCall.name === FINISH_TOOL_NAME && this.finishTool) {
               try {
                 const params = this.finishTool.parameters
-                  ? (this.finishTool.parameters.parse(this.parseToolCallArguments(toolCall.arguments)) as z.infer<FP>)
+                  ? this.finishTool.parameters.parse(this.parseToolCallArguments(toolCall.arguments))
                   : undefined;
                 finishParams = params;
                 break;
@@ -681,7 +681,7 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
           (!assistantMessage.toolCalls || assistantMessage.toolCalls.length === 0) &&
           assistantMessage.content
         ) {
-          finishParams = undefined as z.infer<FP>;
+          finishParams = undefined;
           messageHistory.push(currentGroup);
           break;
         }
@@ -901,9 +901,9 @@ export class Agent<FP extends z.ZodType = z.ZodTypeAny, FM = unknown> extends Ev
     const toSummarize = taskContextEnd > 0 ? messages.slice(taskContextEnd) : messages.slice(1);
 
     const summaryMessages: ChatMessage[] = [
-      { role: 'system', content: MESSAGE_SUMMARIZER_PROMPT } as SystemMessage,
+      { role: 'system', content: MESSAGE_SUMMARIZER_PROMPT },
       ...toSummarize,
-      { role: 'user', content: 'Please provide a concise summary.' } as UserMessage,
+      { role: 'user', content: 'Please provide a concise summary.' },
     ];
 
     const summaryResponse = await this.client.generate(summaryMessages, new Map());

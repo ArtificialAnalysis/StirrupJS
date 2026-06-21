@@ -6,7 +6,7 @@
  * the Responses API via the `baseURL` parameter (e.g. OpenRouter).
  */
 
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import OpenAI from 'openai';
 import retry from 'async-retry';

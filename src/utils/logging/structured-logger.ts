@@ -548,13 +548,13 @@ export function createStructuredLogger<FP = unknown>(
 
   // Register all event handlers
   for (const [event, handler] of Object.entries(handlers)) {
-    agent.on(event as keyof AgentEvents<FP>, handler as any);
+    agent.on(event as keyof AgentEvents<FP>, handler);
   }
 
   // Return cleanup function
   return () => {
     for (const [event, handler] of Object.entries(handlers)) {
-      agent.off(event as keyof AgentEvents<FP>, handler as any);
+      agent.off(event as keyof AgentEvents<FP>, handler);
     }
   };
 }

@@ -77,7 +77,7 @@ export class E2BCodeExecToolProvider extends CodeExecToolProvider {
       apiKey: this.apiKey,
       template: this.template,
       timeoutMs: this.timeout,
-    } as any);
+    });
 
     return super.getTools();
   }
