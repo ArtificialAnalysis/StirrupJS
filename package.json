@@ -87,7 +87,7 @@
     "@ai-sdk/anthropic": "^3.0.85",
     "@ai-sdk/openai": "^3.0.73",
     "@anthropic-ai/sdk": "^0.105.0",
-    "@e2b/code-interpreter": "^1.0.1",
+    "@e2b/code-interpreter": "^2.6.1",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@types/dockerode": "^4.0.1",
     "ai": "^6.0.208",
