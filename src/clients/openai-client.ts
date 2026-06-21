@@ -151,6 +151,11 @@ export class ChatCompletionsClient implements LLMClient {
     const toolCalls: ToolCall[] = [];
     if (message.tool_calls) {
       for (const tc of message.tool_calls) {
+        // openai v6 widened tool_calls to a union of function and custom tool
+        // calls; stirrup only emits function tools, so skip any other kind.
+        if (tc.type !== 'function') {
+          continue;
+        }
         toolCalls.push({
           name: tc.function.name,
           arguments: tc.function.arguments,
