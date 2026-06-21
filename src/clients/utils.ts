@@ -8,47 +8,54 @@ import type { ChatMessage, Content, Tool } from '../core/models.js';
 // Zod Schema Helpers (minimal, avoids depending on Zod runtime types)
 // ============================================================================
 
+// Normalized view of a Zod schema's internal definition. Zod 4 exposes the
+// definition at `schema._zod.def` keyed by a string `type` discriminator (e.g.
+// 'string', 'object', 'optional'), and the human description via the
+// `schema.description` getter rather than on the def itself.
 type ZodDefLike = {
-  typeName: string;
+  type: string;
   description?: string;
-  schema?: unknown;
   innerType?: unknown;
-  type?: unknown;
+  element?: unknown;
+  shape?: Record<string, unknown>;
+  entries?: Record<string, unknown>;
   values?: unknown[];
-  value?: unknown;
-  shape?: () => Record<string, unknown>;
 };
 
 function getZodDef(schema: unknown): ZodDefLike | null {
   if (typeof schema !== 'object' || schema === null) return null;
-  const def = (schema as { _def?: unknown })._def;
+  const def = (schema as { _zod?: { def?: unknown } })._zod?.def;
   if (typeof def !== 'object' || def === null) return null;
-  const typeName = (def as { typeName?: unknown }).typeName;
-  if (typeof typeName !== 'string') return null;
-  return def as ZodDefLike;
+  const type = (def as { type?: unknown }).type;
+  if (typeof type !== 'string') return null;
+  const d = def as Record<string, unknown>;
+  const description = (schema as { description?: unknown }).description;
+  return {
+    type,
+    description: typeof description === 'string' && description ? description : undefined,
+    innerType: d.innerType,
+    element: d.element,
+    shape: typeof d.shape === 'object' && d.shape !== null ? (d.shape as Record<string, unknown>) : undefined,
+    entries: typeof d.entries === 'object' && d.entries !== null ? (d.entries as Record<string, unknown>) : undefined,
+    values: Array.isArray(d.values) ? d.values : undefined,
+  };
 }
 
 function unwrapZodSchema(schema: unknown): unknown {
   let current: unknown = schema;
   // Unwrap common Zod wrappers to get at the underlying schema definition.
-  // This is important for schemas using .refine/.superRefine (ZodEffects).
   let keepUnwrapping = true;
   while (keepUnwrapping) {
     const def = getZodDef(current);
     if (!def) break;
-    switch (def.typeName) {
-      case 'ZodEffects':
-        current = def.schema;
-        break;
-      case 'ZodDefault':
-      case 'ZodCatch':
-      case 'ZodReadonly':
-      case 'ZodBranded':
-      case 'ZodPipeline':
-        current = def.innerType;
-        break;
-      case 'ZodOptional':
-      case 'ZodNullable':
+    switch (def.type) {
+      case 'optional':
+      case 'nullable':
+      case 'default':
+      case 'prefault':
+      case 'nonoptional':
+      case 'catch':
+      case 'readonly':
         current = def.innerType;
         break;
       default:
@@ -56,6 +63,38 @@ function unwrapZodSchema(schema: unknown): unknown {
     }
   }
   return current;
+}
+
+// Returns true when a schema accepts `undefined` (optional / defaulted), which
+// excludes it from a JSON Schema `required` list.
+function isZodOptional(value: unknown): boolean {
+  const fn = (value as { isOptional?: unknown }).isOptional;
+  if (typeof fn !== 'function') return false;
+  try {
+    return (fn as () => boolean).call(value) === true;
+  } catch {
+    return false;
+  }
+}
+
+// Convert a Zod object schema into JSON Schema `properties` + `required`,
+// shared by the OpenAI and Anthropic tool builders.
+function zodObjectToProperties(schema: unknown): {
+  properties: Record<string, unknown>;
+  required: string[];
+} {
+  const properties: Record<string, unknown> = {};
+  const required: string[] = [];
+
+  const def = getZodDef(schema);
+  if (def && def.type === 'object' && def.shape) {
+    for (const [key, value] of Object.entries(def.shape)) {
+      properties[key] = zodToJsonSchema(value);
+      if (!isZodOptional(value)) required.push(key);
+    }
+  }
+
+  return { properties, required };
 }
 
 // ============================================================================
@@ -311,24 +350,10 @@ export function toOpenAITools(tools: Map<string, Tool>): unknown[] {
   const openaiTools: unknown[] = [];
 
   for (const [name, tool] of tools) {
-    const required: string[] = [];
-    const properties: Record<string, unknown> = {};
-
     // Build properties from Zod schema
-    if (tool.parameters) {
-      const schema = unwrapZodSchema(tool.parameters);
-      const def = getZodDef(schema);
-      const shapeFn = def && def.typeName === 'ZodObject' ? def.shape : undefined;
-      if (typeof shapeFn === 'function') {
-        const shape = shapeFn();
-        for (const [key, value] of Object.entries(shape)) {
-          properties[key] = zodToJsonSchema(value);
-          const isOptionalFn = (value as { isOptional?: unknown }).isOptional;
-          const isOptional = typeof isOptionalFn === 'function' ? (isOptionalFn as () => boolean)() : false;
-          if (!isOptional) required.push(key);
-        }
-      }
-    }
+    const { properties, required } = tool.parameters
+      ? zodObjectToProperties(unwrapZodSchema(tool.parameters))
+      : { properties: {}, required: [] };
 
     openaiTools.push({
       type: 'function',
@@ -356,24 +381,10 @@ export function toAnthropicTools(tools: Map<string, Tool>): unknown[] {
   const anthropicTools: unknown[] = [];
 
   for (const [name, tool] of tools) {
-    const properties: Record<string, unknown> = {};
-    const required: string[] = [];
-
     // Build properties from Zod schema
-    if (tool.parameters) {
-      const schema = unwrapZodSchema(tool.parameters);
-      const def = getZodDef(schema);
-      const shapeFn = def && def.typeName === 'ZodObject' ? def.shape : undefined;
-      if (typeof shapeFn === 'function') {
-        const shape = shapeFn();
-        for (const [key, value] of Object.entries(shape)) {
-          properties[key] = zodToJsonSchema(value);
-          const isOptionalFn = (value as { isOptional?: unknown }).isOptional;
-          const isOptional = typeof isOptionalFn === 'function' ? (isOptionalFn as () => boolean)() : false;
-          if (!isOptional) required.push(key);
-        }
-      }
-    }
+    const { properties, required } = tool.parameters
+      ? zodObjectToProperties(unwrapZodSchema(tool.parameters))
+      : { properties: {}, required: [] };
 
     anthropicTools.push({
       name: name,
@@ -403,58 +414,55 @@ export function zodToJsonSchema(schema: unknown): Record<string, unknown> {
 
   const result: Record<string, unknown> = {};
 
-  // Get description from _def.description
-  if (typeof def.description === 'string' && def.description) {
+  // Description is exposed via the `schema.description` getter (captured in def).
+  if (def.description) {
     result.description = def.description;
   }
 
-  switch (def.typeName) {
-    case 'ZodString':
+  switch (def.type) {
+    case 'string':
       result.type = 'string';
       break;
-    case 'ZodNumber':
+    case 'number':
       result.type = 'number';
       break;
-    case 'ZodBoolean':
+    case 'boolean':
       result.type = 'boolean';
       break;
-    case 'ZodArray':
+    case 'array':
       result.type = 'array';
-      result.items = zodToJsonSchema(def.type);
+      result.items = zodToJsonSchema(def.element);
       break;
-    case 'ZodObject': {
+    case 'object': {
       result.type = 'object';
       const properties: Record<string, unknown> = {};
-      const shapeFn = def.shape;
-      if (typeof shapeFn === 'function') {
-        const shape = shapeFn();
-        for (const [key, value] of Object.entries(shape)) {
+      if (def.shape) {
+        for (const [key, value] of Object.entries(def.shape)) {
           properties[key] = zodToJsonSchema(value);
         }
       }
       result.properties = properties;
       break;
     }
-    case 'ZodOptional':
+    case 'optional':
+    case 'default':
+      // Represent as the underlying schema; optionality is handled in `required`.
       return zodToJsonSchema(def.innerType);
-    case 'ZodNullable': {
+    case 'nullable': {
       const innerSchema = zodToJsonSchema(def.innerType);
       innerSchema.nullable = true;
       return innerSchema;
     }
-    case 'ZodDefault':
-      // Represent as the underlying schema; default is optional for most tool-callers.
-      return zodToJsonSchema(def.innerType);
-    case 'ZodEffects':
-      return zodToJsonSchema(def.schema);
-    case 'ZodEnum':
+    case 'enum':
       result.type = 'string';
-      result.enum = def.values;
+      result.enum = def.entries ? Object.values(def.entries) : [];
       break;
-    case 'ZodLiteral':
-      result.type = typeof def.value;
-      result.const = def.value;
+    case 'literal': {
+      const value = def.values?.[0];
+      result.type = typeof value;
+      result.const = value;
       break;
+    }
     default:
       result.type = 'string';
   }

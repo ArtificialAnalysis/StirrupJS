@@ -162,7 +162,7 @@ export class MCPToolProvider implements ToolProvider {
           // Call MCP tool
           const result = await client.callTool({
             name: mcpTool.name,
-            arguments: params,
+            arguments: params as Record<string, unknown>,
           });
 
           // Format response as XML

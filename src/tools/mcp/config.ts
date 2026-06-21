@@ -10,7 +10,7 @@ import { z } from 'zod';
 export const StdioServerConfigSchema = z.object({
   command: z.string().describe('Command to execute'),
   args: z.array(z.string()).default([]).describe('Command arguments'),
-  env: z.record(z.string()).optional().describe('Environment variables'),
+  env: z.record(z.string(), z.string()).optional().describe('Environment variables'),
 });
 
 export type StdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
@@ -20,7 +20,7 @@ export type StdioServerConfig = z.infer<typeof StdioServerConfigSchema>;
  */
 export const SseServerConfigSchema = z.object({
   url: z.string().url().describe('SSE endpoint URL (must end with /sse)'),
-  headers: z.record(z.string()).optional().describe('HTTP headers'),
+  headers: z.record(z.string(), z.string()).optional().describe('HTTP headers'),
   timeout: z.number().optional().describe('Connection timeout in ms'),
   sseReadTimeout: z.number().optional().describe('SSE read timeout in ms'),
 });
@@ -32,7 +32,7 @@ export type SseServerConfig = z.infer<typeof SseServerConfigSchema>;
  */
 export const HttpServerConfigSchema = z.object({
   url: z.string().url().describe('HTTP endpoint URL'),
-  headers: z.record(z.string()).optional().describe('HTTP headers'),
+  headers: z.record(z.string(), z.string()).optional().describe('HTTP headers'),
   timeout: z.number().optional().describe('Request timeout in ms'),
 });
 
@@ -52,7 +52,7 @@ export type WebSocketServerConfig = z.infer<typeof WebSocketServerConfigSchema>;
  */
 export const UrlServerConfigSchema = z.object({
   url: z.string().url().describe('HTTP endpoint URL'),
-  headers: z.record(z.string()).optional().describe('HTTP headers'),
+  headers: z.record(z.string(), z.string()).optional().describe('HTTP headers'),
   timeout: z.number().optional().describe('Request timeout in ms'),
 });
 
@@ -75,7 +75,7 @@ export type McpServerConfig = z.infer<typeof McpServerConfigSchema>;
  * MCP configuration file format
  */
 export const McpConfigSchema = z.object({
-  mcpServers: z.record(McpServerConfigSchema),
+  mcpServers: z.record(z.string(), McpServerConfigSchema),
 });
 
 export type McpConfig = z.infer<typeof McpConfigSchema>;
