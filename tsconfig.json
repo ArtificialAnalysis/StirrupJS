@@ -14,7 +14,6 @@
     "rootDir": "./src",
     "removeComments": true,
     "importHelpers": false,
-    "downlevelIteration": true,
 
     /* Interop Constraints */
     "esModuleInterop": true,
@@ -41,18 +40,7 @@
     "noPropertyAccessFromIndexSignature": false,
 
     /* Completeness */
-    "skipLibCheck": true,
-
-    /* Path Mapping */
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@core/*": ["./src/core/*"],
-      "@clients/*": ["./src/clients/*"],
-      "@tools/*": ["./src/tools/*"],
-      "@content/*": ["./src/content/*"],
-      "@utils/*": ["./src/utils/*"]
-    }
+    "skipLibCheck": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
